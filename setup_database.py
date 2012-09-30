@@ -69,10 +69,10 @@ predict_SVD_output?=$(outdir)predict/SVD/
 weights?=
 
 seq2exodus_input?=$(predict_output)part*
-seq2exodus_output?=$(outdir)interpexodus/noSVD/
+seq2exodus_output?=$(outdir)interpexodus_noSVD/
 
 seq2exodus_SVD_input?=$(predict_SVD_output)part*
-seqexodus_SVD_output?=$(outdir)interpexodus/SVD/
+seqexodus_SVD_output?=$(outdir)interpexodus_SVD/
 output_name?=
 
 """
@@ -88,7 +88,7 @@ preprocess: preprocess.py grabtemplate.py
 
 Convert="""
 simform-deploy.tar.gz: exopy2.py exopy.py
-	tar czf simform-deploy.tar.gz exopy2.py
+	tar czf simform-deploy.tar.gz exopy2.py exopy.py
 	
 convert: mr_exodus2seq_hadoop.py simform-deploy.tar.gz
 ifeq ($(timestepfile),none)
@@ -161,10 +161,12 @@ ifeq ($(SVD),False)
 	test -e $(design) && test -e $(points) && \\
 	hadoop fs -test -e $(predict_output) && \\
 	python check_time.py $(exodus2seq_output) $(predict_output) && \\
-	hadoop fs -rmr $(predict_output) && \\
+	hadoop fs -rmr $(predict_output);\\
+	test -e $(design) && test -e $(points) && \\
+	(hadoop fs -test -e $(predict_output) || \\
 	time python mr_predict_hadoop.py $(predict_input) -r hadoop --no-output \\
 	-o $(predict_output) --variable $(variable) \\
-	--design=$(design) --points=$(points) --file $(design) --file $(points); \\
+	--design=$(design) --points=$(points) --file $(design) --file $(points)); \\
 	echo 'Prediction Done!'; \\
 	echo '========================================' 
 else
@@ -175,35 +177,47 @@ ifeq ($(SVD),True)
 	test -e $(weights) && \\
 	hadoop fs -test -e $(predict_SVD_output) && \\
 	python check_time.py $(predict_SVD_input) $(predict_SVD_output) && \\
-	hadoop fs -rmr $(predict_SVD_output) && \\
+	hadoop fs -rmr $(predict_SVD_output); \\
+	test -e $(weights) && \\
+	(hadoop fs -test -e $(predict_SVD_output) || \\
 	time python mr_predictwithSVD_hadoop.py $(predict_SVD_input) -r hadoop --no-output \\
 	-o $(predict_SVD_output) --variable $(variable) \\
-	--weights=$(weights)  --file $(weighs); \\
+	--weights=$(weights)  --file $(weighs) ); \\
 	echo 'Prediction Done!'; \\
 	echo '========================================' 
-end
-end
+endif
+endif
 """
 
 Seq2Exodus="""
-seq2exodus: mr_outputexodus_hadoop.py mr_outputexoduswithSVD_hadoop.py
+seq2exodus: mr_outputexodus_hadoop.py mr_outputexoduswithSVD_hadoop.py simform-deploy.tar.gz
 ifeq ($(SVD),False)
-	@echo '========================================' && \\
-	echo 'Converting interpolated sequence files to interpolated exodus files...' && \\
+	@echo '========================================'; \\
+	echo 'Converting interpolated sequence files to interpolated exodus files...'; \\
+	hadoop fs -test -e $(seq2exodus_output) && \\
+	python check_time.py $(predict_output) $(seq2exodus_output) && \\
+	hadoop fs -rmr $(seq2exodus_output);\\
+	hadoop fs -test -e $(seq2exodus_output) || \\
 	time python mr_outputexodus_hadoop.py $(seq2exodus_input) --outputname $(output_name) \\
-	--variable $(variable)  --outdir $(seq2exodus_output) --indir $(dir)\\
-	&& echo 'Convert to new interpolated exodus files Done!' && \\
+	--variable $(variable)  --outdir $(seq2exodus_output) --indir $(dir) -r hadoop \\
+	--python-archive simform-deploy.tar.gz --no-output; \\
+	echo 'Convert to new interpolated exodus files Done!';\\
 	echo '========================================'
 else
 ifeq ($(SVD),True)
-	@echo '========================================' && \\
-	echo 'Converting interpolated sequence files to interpolated exodus files with SVD...' && \\
+	@echo '========================================'; \\
+	echo 'Converting interpolated sequence files to interpolated exodus files with SVD...'; \\
+	hadoop fs -test -e $(seq2exodus_SVD_output) && \\
+	python check_time.py $(predict_SVD_output) $(seq2exodus_SVD_output) && \\
+	hadoop fs -rmr $(seq2exodus_SVD_output);\\
+	hadoop fs -test -e $(seq2exodus_SVD_output) || \\
 	time python mr_outputexoduswithSVD_hadoop.py $(seq2exodus_SVD_input) --outputname $(output_name) \\
-	--variable $(variable)  --outdir $(seq2exodus_SVD_output) --indir $(dir)\\
-	&& echo 'Convert to new interpolated exodus files Done!' && \\
+	--variable $(variable)  --outdir $(seq2exodus_SVD_output) --indir $(dir) -r hadoop \\
+	--python-archive simform-deploy.tar.gz --no-output; \\
+	echo 'Convert to new interpolated exodus files Done!'; \\
 	echo '========================================'
-end
-end
+endif
+endif
 """
 	
 Check="""

@@ -15,6 +15,7 @@ __author__ = 'Yangyang Hou <hyy.sun@gmail.com>'
 import sys
 import os
 from mrjob.job import MRJob
+from mrjob.compat import get_jobconf_value
 
 import exopy as ep
 from numpy import array, loadtxt
@@ -23,6 +24,7 @@ from subprocess import call, check_call, Popen, PIPE, STDOUT
 class MROutputExoduswithSVD(MRJob):
 
     STREAMING_INTERFACE = MRJob.STREAMING_INTERFACE_TYPED_BYTES
+    JOBCONF = {'mapred.child.java.opts':'-Xmx8GB'}
     
     def configure_options(self):
         """Add command-line options specific to this script."""
@@ -40,7 +42,7 @@ class MROutputExoduswithSVD(MRJob):
             '--outdir', dest='outdir',
             help='--outdir DIR, Write the output to the directory DIR'       
         )
-         self.add_passthrough_option(
+        self.add_passthrough_option(
             '--indir', dest='indir',
             help='--indir DIR, The HDFS directory you can get the template exodus file '       
         )
@@ -118,7 +120,7 @@ class MROutputExoduswithSVD(MRJob):
         index = tmpstr.find('/')
         prefix = 'hdfs://'+tmpstr[0:index]
         
-        cmd = 'hadoop fs -ls '+ dir
+        cmd = 'hadoop fs -ls '+ self.indir
         p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
         content = p.stdout.read()
         files = content.split('\n')
@@ -129,37 +131,45 @@ class MROutputExoduswithSVD(MRJob):
             file = file.split(' ')
             fname = file[len(file)-1]
             if fname.endswith('.e'):
-                 fname = prefix + fname
-            if flag:
-                check_call(['hadoop', 'fs', '-copyToLocal', fname, 'template.e'])
-                flag = False
+                fname = prefix + fname
+                if flag:
+                    check_call(['hadoop', 'fs', '-copyToLocal', fname, 'template.e'])
+                    flag = False
+                    break
         
         template = 'template.e'
         
         # create new interpolation exodus file
         
         if call(['test', '-e', template]) != 0:
-            print "The template file doesnot exist!"
+            print >>sys.stderr, "The template file doesnot exist!"
             yield key,1
         else:
-            print "Reading templatefile %s"%(template)
+            print >>sys.stderr, "Reading templatefile %s"%(template)
             templatefile = ep.ExoFile(template,'r')
             
             outfile = self.outputname+str(key)+'.e'
-            print "Writing outputfile %s"%(os.path.join(outfile))
+            print >>sys.stderr,  "Writing outputfile %s"%(os.path.join(outfile))
             newfile = ep.ExoFile(os.path.join(outfile),'w')  
             
             err_name = self.variable+'_ERR'
             templatefile.change_nodal_vars2(newfile, time, (self.variable, err_name), (val,err), ('d','d'))
             
-            call(['hadoop', 'fs', '-copyFromLocal', outfile, os.path.join(self.outdir,outfile)])
             newfile.src.sync() 
             newfile.close()
+            print >>sys.stderr, "Finished writing data, copying to Hadoop"
             
-            check_call(['rm', '-r', template])
-            check_call(['rm', '-r', outfile])
+            user = get_jobconf_value('mapreduce.job.user.name')
+            call(['hadoop', 'fs', '-copyFromLocal', outfile, os.path.join(self.outdir,outfile)])
+            call(['hadoop', 'fs', '-chown', '-R', user, os.path.join(self.outdir)])
+            
+            print >>sys.stderr, "Copied to Hadoop, removing ..."
+            
+            call(['rm', template])
+            call(['rm', outfile])
             yield key,0
-        
+            
+            print >>sys.stderr, "Done"
         
 
 if __name__ == '__main__':

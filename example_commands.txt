@@ -1,0 +1,50 @@
+Some example commands which are tested fine on Stanford ICME:
+
+We have 99 exodus files in the input directory: hdfs://icme-hadoop1.localdomain/user/yangyang/simform/
+
+First, we setup database, and get the Makefile 'runs':
+
+	make setup_database name=runs variable=TEMP dir=hdfs://icme-hadoop1.localdomain/user/yangyang/simform/
+
+After we get 'runs', we can do the following things:
+
+	make -f runs preprocess
+
+Convert exodus files to sequence files:
+
+	make -f runs convert timestepfile=timesteps.txt 
+    (using normalized timesteps, time: 20min36s)
+    
+	make -f runs convert exodus2seq_output=hdfs://icme-hadoop1.localdomain/user/yangyang/simform/output/data.seq2/
+    (without using normalized timesteps, time: 20min24s)
+
+
+Predict without SVD:
+
+	make -f runs predict design=design_points.txt points=new_points.txt
+    (design points:99 new points:10, time:16min2s)
+
+	make -f runs seq2exodus output_name=thermal_maze_interpolation
+    (output 10 new interpolation exodus files, time: 4min45s)
+    
+
+Predict with SVD (we can get not only interpolation value but also estimated errors):
+
+	Convert sequenc files to matrix sequence files:
+	make -f runs seq2mseq
+    (time:2hr...)
+
+    Compute the SVD model:
+	make -f runs model numExodusfiles=99
+    (step1: full1, 44min46s
+     step2: full2  1min
+     step3: full3  4min6s
+     step4: TSMatMul 3min42s
+     total time: 54min
+    
+    Predict with SVD singular values and vectors (before this steps, we should create weights.txt first):
+	make -f runs predict weights=weights.txt SVD=True    
+    (new points:2, time: 22min26s)
+
+	make -f runs seq2exodus output_name=thermal_maze_interpolation SVD=True
+    (output 2 new interpolation exodus file, time: 2min40s)

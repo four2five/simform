@@ -45,6 +45,10 @@ sudo apt-get install git-core
 mkdir devextern
 cd devextern
 
+Install dumbo
+
+    sudo easy_install -z dumbo
+    
 # install mrjob
 git clone https://github.com/dgleich/mrjob.git
 cd mrjob
@@ -126,7 +130,7 @@ make -f runs seq2mseq
     reduce:55min
     total:1hr35min
 
-make -f runs model numExodusfiles=99
+make -f runs model numExodusfiles=6
     full1 22min51s
     full2 1min
     full3 3min57s

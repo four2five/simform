@@ -5,3 +5,5 @@ of the initial exodus files
 
 * Insert new interpolation scripts for the singular vectors
 
+* Allow analysis scripts to work directly on intermediately predicted
+exodus files

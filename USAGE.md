@@ -224,4 +224,143 @@ bounded by the initial exodus files.
 Building a database
 -------------------
 
-The idea behind 
+For whatever reason, these codes have evolved to depend on many
+configuration specific paths.  In order to mitigate this complexity
+and produce a useful command line interface, we adopt the idea
+of generating Makefiles for a new problem.  Thus, the idea
+behind the codes is:
+
+1. Create a database specific makefile
+2. Initialize the database (Data Input)
+3. Work with the database (Interpolation/Model Reduction)
+4. Save output as Exodus files
+
+All of the following scripts are available in the `src/` directory.
+**We will assume that the following commands are all run from that
+directory!**
+
+    make setup_database name=runs variable=TEMP \
+      dir=hdfs://icme-hadoop1.localdomain/user/yangyang/simform/
+
+This will create a new Makefile called `runs` that is designed
+to manipulate the files in hdfs://icme-hadoop1.localdomain/user/yangyang/simform/
+and specifically, manipulate the TEMP variable of these files.
+
+The only option for this script is the directory of the resulting 
+database.
+
+   make setup_database name=runs variable=TEMP \
+      dir=hdfs://icme-hadoop1.localdomain/user/yangyang/simform/ \
+      outdir=hdfs://icme-hadoop1.localdomain/user/dgleich/test
+      
+This will instruct the script to read exodus files from yangyang's
+directory and place the converted files in my directory.      
+
+Once we have the `runs` file, we can initialize the database:
+
+    make -f runs preprocess
+    # you need to set outdir to 777 permissions.  We are currently
+    # investigating this issue
+    hadoop fs -chmod 777 hdfs://icme-hadoop1.localdomain/user/dgleich/test
+    make -f runs convert
+    
+This will read all of the exodus files and convert them into files
+that are easier to process on Hadoop in a distributed fashion.  What it's
+actually doing is taking the exodus files and splitting them up into
+time-step sized components that we will process in parallel in the
+next steps.  
+
+> We assume that all of the exodus files have the same timesteps.
+> If this is not the case, then you need to normalize the timesteps.
+> We have an option to do this in the convert method.  
+>   
+>     make -f runs convert timestepfile=timesteps.txt  
+>
+> This command will do linear interpolation in time in order to ensure 
+> that all exodus files are processed on the same time-grid.
+
+And that's all there is to building the database!
+
+Working with the database
+-------------------------
+
+We describe two tasks to work with the database of exodus files.  The
+first is just simple interpolation.  The second is an SVD based
+reduced order model that provides interpolation with an error estimate.
+
+### Simple interpolation
+
+Given two filenames, we can generate interpolants as follows:
+
+    make -f runs predict design=design_points.txt points=new_points.txt
+    
+This will result in a new database of simulation data at `$outdir/predict/noSVD`
+We can save these predictions to exodus files via
+
+    make -f runs seq2exodus output_name=mynewsims
+    
+This will assume that you are using the default output location.    
+
+To get the exodus files locally, just download them via
+
+    hadoop fs -get <hdfs-path-to-exodus-file>
+
+> If you wish to store the new predictions in a non-standard location, please use:
+>     
+>     make -f runs predict design=design_points.txt points=new_points.txt \
+>         predict_output=<hdfspath> 
+>         
+>     make -f runs seq2exodus output_name=mynewsims predict_output=<hdfspath>
+
+### Building an SVD or Reduced order model
+
+If you wish to compute a reduced order model, then the first step
+is to convert the data into the format expected via the SVD command.
+
+    make -f runs seq2mseq
+    make -f runs model numExodusfiles=99
+    
+These commands will first create `$outdir/data.mseq` which will store the matrix
+in mseq form, which is what the SVD computation expects.  Then we
+actually compute the SVD with `model` objective.  In this case, we need
+to tell it the number of exodus files (we are working on improving this
+functionality).
+
+> If you wish to rename the output
+>     
+>     make -f runs seq2mseq mseq_output=<hdfspath>
+>     make -f runs model numExodusfiles=99 \
+>       mseq_output=<hdfspath> model_output=<hdfspath>
+
+
+### Interpolation with prediction error
+
+*Not quite complete.*
+In order to interpolate with prediction error, we need to have
+the singular value decomposition consructed.  Given a weight
+matrix, we can compute these at the moment, but we are finishing
+one final script to automatically get the interpolation weights.
+
+    make -f runs predict weights=weights.txt SVD=True
+	make -f runs seq2exodus output_name=thermal_maze_interpolation SVD=True
+    
+These will save the output of the SVD computed interpolant back to
+a database of exodus files on the HDFS.
+
+### Analyzing the interpolants
+
+*Not complete* idealy, we'd like to analyze the interpolant files.
+We are planning ot extend seq2exodus to implement this functionality.
+
+Other file types
+----------------
+
+### Timestep files
+
+A timestep file is just a list of timesteps, one per line.  It should
+be loadable by the following python script:
+
+    file = open('timesteps.txt','rt')
+    steps = [float(l.rstrip()) for l in file]
+    
+    

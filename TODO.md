@@ -7,3 +7,6 @@ of the initial exodus files
 
 * Allow analysis scripts to work directly on intermediately predicted
 exodus files
+
+* Allow construction of the model to determine the number of 
+exodus files itself

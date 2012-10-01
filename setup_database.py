@@ -181,8 +181,8 @@ ifeq ($(SVD),True)
 	test -e $(weights) && \\
 	(hadoop fs -test -e $(predict_SVD_output) || \\
 	time python mr_predictwithSVD_hadoop.py $(predict_SVD_input) -r hadoop --no-output \\
-	-o $(predict_SVD_output) --variable $(variable) \\
-	--weights=$(weights)  --file $(weighs) ); \\
+	-o $(predict_SVD_output)  \\
+	--weights=$(weights)  --file $(weights) ); \\
 	echo 'Prediction Done!'; \\
 	echo '========================================' 
 endif

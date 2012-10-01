@@ -40,8 +40,14 @@ def checktime(left_path, right_path):
     for left_time in left_times:
         for right_time in right_times:
             if left_time > right_time:
+                print >> sys.stderr, \
+                  "The path\n  %s\nis newer than\n  %s,\n"%(
+                    left_path, right_path) + \
+                  "we are removing the second path and regenerating."
                 return True
-    
+    print >> sys.stderr, \
+      "The path\n  %s\n is older than\n  %s,\n"%(left_path, right_path) + \
+      "we are not going to do anything in this case."
     return False
 
 

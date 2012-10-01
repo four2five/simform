@@ -1,7 +1,0 @@
-git remote add dgleich https://github.com/dgleich/simform
-git pull dgleich
-git pull dgleich master
-git add setup_database.py
-git commit -m "Small change to setup"
-git pull dgleich master
-git push origin master

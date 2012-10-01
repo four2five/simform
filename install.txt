@@ -1,6 +1,6 @@
-#!/bin/bash
+Here are some install instructions you can reference to meet the requirements:
 
-On all nodes (namenode and datanodes), we should install the following packages:
+On all nodes (hadoop namenode and datanodes), we should install the following packages:
 
 # install numpy
 wget "http://sourceforge.net/projects/numpy/files/NumPy/1.6.1/numpy-1.6.1.tar.gz/download"
@@ -45,7 +45,7 @@ If you have some problems about netcdf, try:
 (see icme-hadoop1 /etc/ld.so.conf.d/ for the template)
 2. Run ldconfig -v as root on all nodes.
 
-We need to install the following packages on the namenode:
+We need to install the following packages on the Hadoop namenode:
 
 # install mrjob
 git clone https://github.com/dgleich/mrjob.git
@@ -60,5 +60,13 @@ python setup.py install
 cd ..
 
 Some notes about running commands:
+
 1. The HDFS uri should be as the following format: 
 hdfs://namenodehost/user/username...
+
+2. To get dumbo feathers, run following:
+git clone https://github.com/klbostee/feathers.git
+cd feathers
+bash build.sh
+
+After that, move feathers.jar into your java classpath or just copy feathers.jar to src/model.

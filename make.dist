@@ -1,0 +1,21 @@
+all: dist
+
+.phony: all dist
+
+curdate=$(shell date +%Y%m%d)
+
+curdist=../distributions/simform-dist-$(curdate).tar.gz
+
+dist: $(curdist)
+
+$(curdist): .git/index 
+	git archive --format tar --prefix simform/ master | (cd /tmp && tar xf -)
+	(cd /tmp/simform && mkdir tars)
+	(cd /tmp/simform/tars && wget https://github.com/dgleich/mrjob/tarball/master -O mrjob.tar.gz)
+	(cd /tmp/simform/tars && wget https://github.com/hyysun/Hadoop/tarball/master -O Hadoop.tar.gz)
+	(cd /tmp/simform/tars && wget https://github.com/klbostee/feathers/tarball/master -O feathers.tar.gz)
+	(cd /tmp/simform/tars && wget https://github.com/klbostee/feathers/tarball/master -O feathers.tar.gz)
+	(cd /tmp && tar cz simform) > $(curdist)
+	$(RM) -r /tmp/simform
+    
+

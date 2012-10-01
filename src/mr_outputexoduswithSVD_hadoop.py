@@ -81,7 +81,7 @@ class MROutputExoduswithSVD(MRJob):
         time = key[1]
         valarray = value[0]
         errarray = value[1]
-        yield fnum, (time, valarrray, errarray)
+        yield fnum, (time, valarray, errarray)
                 
         
     def reducer(self, key, values):

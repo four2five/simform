@@ -72,7 +72,7 @@ seq2exodus_input?=$(predict_output)part*
 seq2exodus_output?=$(outdir)interpexodus_noSVD/
 
 seq2exodus_SVD_input?=$(predict_SVD_output)part*
-seqexodus_SVD_output?=$(outdir)interpexodus_SVD/
+seq2exodus_SVD_output?=$(outdir)interpexodus_SVD/
 output_name?=
 
 """

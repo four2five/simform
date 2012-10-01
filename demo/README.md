@@ -27,16 +27,19 @@ this as "my-mrsimform-hadoop.properties"
 
     whirr launch-cluster --config my-mrsimform-hadoop.properties
     
-4. Login to the nodes
+4. Login to the nodes.  whirr should spit out a list of nodes when
+it launches.  I just pick the first one.
 
     ssh -i $(HOME)/.ssh/id_rsa_whirr -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-50-16-181-181.compute-1.amazonaws.com
     
+5. Now see DEMO.md for how to configure the cluster and run a few commands.    
     
 15. Destroy the cluster
 
     whirr destroy-cluster --config my-mrsimform-hadoop.properties 
     
-    
+Referenes
+---------    
 
 * <http://www.evanconkle.com/2011/11/run-hadoop-cluster-ec2-easy-apache-whirr/>
 * <http://archive.cloudera.com/cdh/3/whirr/contrib/python/running-mapreduce-jobs.html>

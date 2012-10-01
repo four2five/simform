@@ -1,63 +1,89 @@
-ssh into one of the node
+Whirr-EC2 Demo
+==============
+
+This is a slightly terse guide to a quick check of our simform codes
+on a Whirr-launched EC2 Hadoop cluster.
+
+We begin where we left off in `README.md`
+
+Configuring the cluster
+-----------------------
+
+1. ssh into one of the node
 
 ssh -i $(HOME)/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" -o StrictHostKeyChecking=no ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" -o StrictHostKeyChecking=no 50.16.61.230
 
-once there...
+2. once there, we want to create a place to put our exodus files
 
-hadoop fs -mkdir /user/temp
-hadoop fs -mkdir /user/temp/simform
+    hadoop fs -mkdir /user/temp
+    hadoop fs -mkdir /user/temp/simform
+    
+3. After that's done, we need to get exodus files into the cluster.
+The easiest wa to do this is to copy them into the temp directory,
+and then move them:    
 
-# Only the temp directory has enough space
-cd /mnt/tmp
+    # Only the temp directory has enough space for a few GB of data
+    cd /mnt/tmp
+    mkdir scratch
+    cd scratch
+    # copy them from your computer 
+    rsync -avz mysource.computer.com:~/mydatadir/*.e scratch/
 
-mkdir scratch
+The final step is to load the files into HDFS
 
-cd scratch
+    cd scratch
+    for f in `ls *.e`; do hadoop fs -put $f /user/temp/simform & ; done
 
-rsync -avz mysource.computer.com:~/mydatadir/*.e scratch/
+Wait until these finish.  It can take a while.
 
-for f in `ls *.e`; do hadoop fs -put $f /user/temp/simform & ; done
+4.  Meanwhile we need to install some software on all the nodes.  Using
+the ip addresses in ~/.whirr/mrsimform-hadoop/instances, we can run the following
+commands:
 
-Wait until these finish
+    for node in 107.22.80.153 50.17.5.207 50.16.113.97 107.20.113.124 23.21.6.71; do
+      ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" \
+        -o StrictHostKeyChecking=no $node \
+        sudo apt-get install -y python-numpy python-scipy python-setuptools \
+        python-netcdf python-dev libatlas3gf-base
+      ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" \
+        -o StrictHostKeyChecking=no $node \
+        sudo easy_install -z typedbytes
+      ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" \
+        -o StrictHostKeyChecking=no $node \
+        sudo easy_install ctypedbytes
+    done  
 
-Now, we need to install numpy, scipy on all nodes
+This will install all the necessary software into all the nodes
+**ASSUMING YOU UPDATE THE LIST OF IP ADDRESSES FOR YOUR EXAMPLE**
 
-'ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" -o StrictHostKeyChecking=no dgleich@107.22.80.153'
-'ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" -o StrictHostKeyChecking=no dgleich@107.20.113.124'
-'ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" -o StrictHostKeyChecking=no dgleich@50.16.113.97'
-'ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" -o StrictHostKeyChecking=no dgleich@23.21.6.71'
-'ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" -o StrictHostKeyChecking=no dgleich@50.17.5.207'
+5. Now, ssh into the head node, and let's install some of the 
+other software there.
 
-for node in 107.22.80.153 50.17.5.207 50.16.113.97 107.20.113.124 23.21.6.71; do
-  ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" -o StrictHostKeyChecking=no dgleich@$node sudo apt-get install -y python-numpy python-scipy python-setuptools  python-netcdf python-dev libatlas3gf-base
-  ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" -o StrictHostKeyChecking=no dgleich@$node sudo easy_install typedbytes ctypedbytes 
-done  
+**Basic setup**
 
-for node in 107.22.80.153 50.17.5.207 50.16.113.97 107.20.113.124 23.21.6.71; do
-  ssh -i /home/dgleich/.ssh/id_rsa_whirr -o "UserKnownHostsFile /dev/null" -o StrictHostKeyChecking=no dgleich@$node sudo apt-get install -y libatlas3gf-base
-done  
+    sudo apt-get install git-core
 
+    cd ~
+    mkdir devextern
+    cd devextern
 
-Now, ssh into the head node
-
-sudo apt-get install git-core
-
-mkdir devextern
-cd devextern
-
-Install dumbo
+**Install dumbo**
 
     sudo easy_install -z dumbo
     
-# install mrjob
-git clone https://github.com/dgleich/mrjob.git
-cd mrjob
-sudo python setup.py install
-cd ..
+**Install mrjob**
 
-Now we need to get hyy-hadoop everywhere.  Check ~/.whirr/mrsimform-hadoop/instances
+    git clone https://github.com/dgleich/mrjob.git
+    cd mrjob
+    sudo python setup.py install
+    cd ..
+
+**Install hyy-hadoop**
+Now we need to get hyy-hadoop everywhere.  
+Check `~/.whirr/mrsimform-hadoop/instances`
 for the private IPs of all the nodes:
 
+    cd ~/devextern
     git clone https://github.com/hyysun/Hadoop.git
     cd Hadoop
     cd python-hadoop
@@ -68,72 +94,70 @@ for the private IPs of all the nodes:
       ssh -o "UserKnownHostsFile /dev/null" -o StrictHostKeyChecking=no $node sudo easy_install Hadoop-0.2.tar.gz
     done
     
-We've got all the prereqs installed now.  We can get the new codes!    
+6. Install simform! We've got all the prereqs installed now.  We can get the new codes!    
 
-cd ~
-mkdir dev
-cd dev
-git clone https://github.com/hyysun/simform.git
+    cd ~
+    mkdir dev
+    cd dev
+    git clone https://github.com/hyysun/simform.git
 
-cd simform/src
+    cd simform/src
 
-cd model
+Except we need to install dumbo feathers    
 
-# install feathers
-git clone https://github.com/klbostee/feathers.git
-cd feathers
-sh build.sh
-cp feathers.jar ..
+**Install feathers**
 
-export HADOOP_HOME=/usr/lib/hadoop
+    cd model
+    git clone https://github.com/klbostee/feathers.git
+    cd feathers
+    sh build.sh
+    cp feathers.jar ..
+    
+7. System setup.  Run    
 
-set the following as .mrjob.conf
+    export HADOOP_HOME=/usr/lib/hadoop
 
-runners:
-  hadoop:
-    hadoop_home: /usr/lib/hadoop
-    jobconf:
-      mapreduce.task.timeout: 3600000
-      mapred.task.timeout: 3600000
-      mapred.reduce.tasks: 8
-      mapred.child.java.opts: -Xmx2G
-      
+and set the following as .mrjob.conf
+
+    runners:
+      hadoop:
+        hadoop_home: /usr/lib/hadoop
+        jobconf:
+          mapreduce.task.timeout: 3600000
+          mapred.task.timeout: 3600000
+          mapred.reduce.tasks: 8
+          mapred.child.java.opts: -Xmx2G
+          
+Running the codes
+------------------          
+          
 For the next step, we need the actual HDFS path. For my demo, it is:
 
     hdfs://ec2-107-22-80-153.compute-1.amazonaws.com:8020      
     
-make setup_database name=runs variable=TEMP dir=hdfs://ec2-107-22-80-153.compute-1.amazonaws.com:8020/user/temp/simform/
+1. Build the database    
+    
+    make setup_database name=runs variable=TEMP \
+        dir=hdfs://ec2-107-22-80-153.compute-1.amazonaws.com:8020/user/temp/simform/
 
-make -f runs preprocess
+    make -f runs preprocess
 
 At this point, we need to edit the output directory to enable the mapred user
 to write to it
 
-hadoop fs -chmod 777 /user/temp/simform/output
+    hadoop fs -chmod 777 /user/temp/simform/output
 
-make -f runs convert timestepfile=timesteps.txt
-    using normalized timesteps  20min36s
+    make -f runs convert timestepfile=timesteps.txt
+        
 
-make -f runs convert
-exodus2seq_output=hdfs://icme-hadoop1.localdomain/user/yangyang/simform/output/data.seq2/
-    without using normalized timesteps  20min24s
+2. Make some predictions and save exodus files
 
-make -f runs predict design=design_points.txt points=new_points.txt
-    16min2s
+    make -f runs predict design=design_points.txt points=new_points.txt
+    make -f runs seq2exodus  numExodusfiles=10 OutputName=output/thermal_maze
 
-make -f runs seq2exodus  numExodusfiles=10 OutputName=output/thermal_maze
-    locally, 9min
+3. Compute the SVD
 
-SVD:
-make -f runs seq2mseq
-    map: 40min
-    reduce:55min
-    total:1hr35min
-
-make -f runs model numExodusfiles=6
-    full1 22min51s
-    full2 1min
-    full3 3min57s
-    TSMatMul 3min29s
-    total: 32min
-
+    make -f runs seq2mseq
+    
+    make -f runs model numExodusfiles=6
+    

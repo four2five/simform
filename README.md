@@ -1,4 +1,4 @@
-mrsimform: MapReduce based Simulation Informatics
+simform: MapReduce based Simulation Informatics
 =========
 
 ### Written by Austin Benson, Paul Constantine, David F. Gleich, and Yangyang Hou
@@ -25,27 +25,27 @@ Here are some commands I ran to do a quick analysis on the EC2 cluster:
 
 ### Initialization
 
-$ make dir=hdfs://nebula/data/exodus-runs
+    $ make dir=hdfs://nebula/data/exodus-runs
 
-$ make setup_database name=runs variable=TEMP dir=hdfs://ec2-107-22-80-153.compute-1.amazonaws.com:8020/user/temp/simform/
-$ make -f runs preprocess
-$ make -f runs convert timestepfile=timesteps.txt
+    $ make setup_database name=runs variable=TEMP dir=hdfs://ec2-107-22-80-153.compute-1.amazonaws.com:8020/user/temp/simform/
+    $ make -f runs preprocess
+    $ make -f runs convert timestepfile=timesteps.txt
 
 In this case, we had to normalize time-steps across the different files as the default step-length is variable.
 
 ### Simple interpolation
 
-$ make -f runs predict design=design_points.txt points=new_points.txt
+    $ make -f runs predict design=design_points.txt points=new_points.txt
 
 and then dump out exodus files
 
-$ make -f runs seq2exodus  numExodusfiles=10 OutputName=output/thermal_maze
+    $ make -f runs seq2exodus  numExodusfiles=10 OutputName=output/thermal_maze
 
 ### SVD based Model Reduction
 
-$ make -f runs seq2mseq
-$ make -f runs model numExodusfiles=6
-$ make -f runs interpsvd design=design_points.txt points=new_points.txt
+    $ make -f runs seq2mseq
+    $ make -f runs model numExodusfiles=6
+    $ make -f runs interpsvd design=design_points.txt points=new_points.txt
 
 Setup
 ---------------

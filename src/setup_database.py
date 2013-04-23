@@ -33,6 +33,7 @@ Header="# This is a makefile script to run scripts automatically\n"+\
 "#     make -f "+name+" model # compute the SVD\n"+\
 "#     make -f "+name+" predict design=<design sites> points=<interpolation sites>\n"+\
 "#     make -f "+name+" check # make sure the database is \"correct\"\n"+\
+"#     make -f "+name+" var # compute the variance of the dataset\n"+\
 "#\n"+\
 "# Yangyang Hou  hou13@purdue.edu\n"+\
 "# Copyright (c) 2012\n\n"
@@ -51,6 +52,9 @@ numExodusfiles?=
 
 inputfile=$(outdir)input.txt
 exodus2seq_output?=$(outdir)data.seq/
+
+var_input?=$(exodus2seq_output)*/*part*.seq
+var_output?=$(outdir)data.var/
 
 mseq_input=$(exodus2seq_output)*/*part*.seq
 mseq_output?=$(outdir)data.mseq/
@@ -113,6 +117,21 @@ else
 endif
 	
 """
+
+Var="""
+var:mr_globalvar_hadoop.py
+	@echo '========================================';\\
+	echo 'Computing the variance for the dataset...'; \\
+	hadoop fs -test -e $(var_output) && \\
+	python check_time.py $(exodus2seq_output) $(var_output) && \\
+	hadoop fs -rmr $(var_output);\\
+	hadoop fs -test -e $(var_output) || \\
+	time python mr_globalvar_hadoop.py $(var_input) -r hadoop \\
+	--no-output -o $(var_output) --variable $(variable); \\
+	echo 'Compute the variance Done!';\\
+	echo '========================================'
+	
+""" 
 
 Seq2Mseq="""
 seq2mseq:mr_seq2mseq_hadoop.py
@@ -239,6 +258,7 @@ makefile.write(Header)
 makefile.write(Variables)
 makefile.write(Preprocess)
 makefile.write(Convert)
+makefile.write(Var)
 makefile.write(Seq2Mseq)
 makefile.write(Model)
 makefile.write(Weights)

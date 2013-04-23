@@ -44,7 +44,8 @@ def convert(inputfile, steps, outdir, variables, normalized_timesteps):
     for i,c in enumerate(fname):
         if c.isdigit():
             fsetnum+=c
-    fset=int(fsetnum)
+    if fsetnum != '':
+        fset=int(fsetnum)
         
     f = ep.ExoFile(inputfile,'r')
         

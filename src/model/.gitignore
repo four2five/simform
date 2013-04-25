@@ -1,2 +1,4 @@
 *.jar
 tests-out
+times
+tsqr-tmp

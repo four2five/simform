@@ -162,11 +162,6 @@ class MROutputExodus(MRJob):
             val.append(value)
         val = array(val)
         
-        time = []
-        for k,value in sorted(time_order.iteritems()):
-            time.append(value)
-        time = array(time)
-        
         # grab template exodus file from HDFS
         
         tmpstr = self.indir[7:]
@@ -197,8 +192,7 @@ class MROutputExodus(MRJob):
         if call(['test', '-e', template]) != 0:
             print >>sys.stderr,  "The template file doesnot exist!"
             yield key,1
-        else:
-            var2 = np.array(var) 
+        else: 
         
             print >>sys.stderr,  "Reading templatefile %s"%(template)
             templatefile = ep.ExoFile(template,'r')
@@ -207,7 +201,7 @@ class MROutputExodus(MRJob):
             print >>sys.stderr, "Writing outputfile %s"%(os.path.join(outfile))
             newfile = ep.ExoFile(os.path.join(outfile),'w')  
             
-            result = insert_vars(templatefile, newfile, (self.variable,), (var2,))
+            result = insert_vars(templatefile, newfile, (self.variable,), (val,))
             
             #templatefile.change_nodal_vars2(newfile, time, (self.variable, ), (val,), ('d',))
             

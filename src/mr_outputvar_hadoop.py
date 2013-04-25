@@ -17,7 +17,7 @@ import os
 from mrjob.job import MRJob
 from mrjob.compat import get_jobconf_value
 
-import exopy as ep
+import exopy2 as ep
 from numpy import array, loadtxt
 from subprocess import call, check_call, Popen, PIPE, STDOUT
 
@@ -197,7 +197,7 @@ class MROutputExodus(MRJob):
             print >>sys.stderr,  "Reading templatefile %s"%(template)
             templatefile = ep.ExoFile(template,'r')
             
-            outfile = self.outputname+str(key)+'.e'
+            outfile = self.outputname+'.e'
             print >>sys.stderr, "Writing outputfile %s"%(os.path.join(outfile))
             newfile = ep.ExoFile(os.path.join(outfile),'w')  
             

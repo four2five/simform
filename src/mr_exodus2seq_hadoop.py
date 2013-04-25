@@ -36,15 +36,7 @@ def linear_interpolate(x,x1,y1,x2,y2):
     y = (x - x1)*slope + y1
     return y
     
-def convert(inputfile, steps, outdir, variables, normalized_timesteps):
-    fset = 0
-    
-    fdir,fname = os.path.split(inputfile)
-    fsetnum=''
-    for i,c in enumerate(fname):
-        if c.isdigit():
-            fsetnum+=c
-    fset=int(fsetnum)
+def convert(inputfile, fset, steps, outdir, variables, normalized_timesteps):
         
     f = ep.ExoFile(inputfile,'r')
         
@@ -218,6 +210,24 @@ class MRExodus2Seq(MRJob):
         else:
             self.timestepfile = self.options.timestepfile
             
+    def filename2fset(self, path):
+        """ Convert a filename into a file-set number by finding the first 
+        number in the path starting from the filename. 
+
+        If we cannot find a path in the filename, return -1
+        Any non-negative number returned indicates we found a file-set number
+        """
+        fdir,fname = os.path.split(path)
+        if len(fname) == 0 and len(fdir) == 0:
+            return -1
+        fsetnum=''
+        for i,c in enumerate(fname):
+            if c.isdigit():
+                fsetnum+=c
+        if len(fsetnum) > 0:
+            return int(fsetnum)
+        else:
+            return self.filename2fset(fdir)
     
     def mapper(self, _, line):
         # step 0: strip off unexpected characters
@@ -234,6 +244,9 @@ class MRExodus2Seq(MRJob):
         if os.path.isdir(os.path.join('./', outdir)):
             call(['rm', '-r', os.path.join('./', outdir)])
         call(['mkdir', os.path.join('./', outdir)])
+
+        # step 1a: determine its fset num
+        fsetno = self.filename2fset(line)
         
         # step 2: do our local processing
         if self.timestepfile is None:
@@ -243,8 +256,10 @@ class MRExodus2Seq(MRJob):
             lines = f.readlines()
             for i in xrange(0, len(lines)):
                 lines[i]=float(lines[i].strip())
-            
-        result = convert(os.path.join('./', file), self.timesteps, os.path.join('./', outdir), self.variables,lines)
+        
+
+           
+        result = convert(os.path.join('./', file), fsetno, self.timesteps, os.path.join('./', outdir), self.variables,lines)
         
         # step3: write back to Hadoop cluster
         user = get_jobconf_value('mapreduce.job.user.name')

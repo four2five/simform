@@ -56,6 +56,9 @@ exodus2seq_output?=$(outdir)data.seq/
 var_input?=$(exodus2seq_output)*/*part*.seq
 var_output?=$(outdir)data.var/
 
+exodusvar_input?=$(var_output)p*
+exodusvar_output?=$(outdir)exodus.var/
+
 mseq_input=$(exodus2seq_output)*/*part*.seq
 mseq_output?=$(outdir)data.mseq/
 
@@ -132,6 +135,22 @@ var:mr_globalvar_hadoop.py
 	echo '========================================'
 	
 """ 
+
+OutputVar="""
+outputvar:mr_outputvar_hadoop.py
+	@echo '========================================';\\
+	echo 'Converting the global variance to the exodus files...'; \\
+	hadoop fs -test -e $(exodusvar_output) && \\
+	python check_time.py $(var_output) $(exodusvar_output) && \\
+	hadoop fs -rmr $(exodusvar_output);\\
+	hadoop fs -test -e $(exodusvar_output) || \\
+	time python mr_outputvar_hadoop.py $(exodusvar_input) --outputname global_var \\
+	--variable $(variable)_VAR  --outdir $(exodusvar_output) --indir $(dir) -r hadoop \\
+	--python-archive simform-deploy.tar.gz --no-output; \\
+	echo 'Convert the variance to the exodus file Done!';\\
+	echo '========================================'
+	
+"""
 
 Seq2Mseq="""
 seq2mseq:mr_seq2mseq_hadoop.py

@@ -18,7 +18,7 @@ from mrjob.job import MRJob
 from mrjob.compat import get_jobconf_value
 
 import exopy2 as ep
-from numpy import array, loadtxt
+import numpy as np
 from subprocess import call, check_call, Popen, PIPE, STDOUT
 
 def insert_vars(source, destination, varNames, varVals):
@@ -36,8 +36,9 @@ def insert_vars(source, destination, varNames, varVals):
 	# put in new variable values
 	for (index,value) in enumerate(varVals):
 	    name = varNames[index]
-        destination.cdf.createVariable(name,('d'),('num_nodes',))
-        destination.cdf.variables[name].assignValue(value)
+        tmp = destination.cdf.createVariable(name,('d'),('num_nodes',))
+        tmp.assignValue(value)
+        #destination.cdf.variables[name].assignValue(value)
 	
 	# Copy all variables for new exofile creation
 	for var in source.cdf.variables.keys():
@@ -159,8 +160,8 @@ class MROutputExodus(MRJob):
             
         val = [ ]  
         for k,value in sorted(val_order.iteritems()):
-            val.append(value)
-        val = array(val)
+            val.extend(value)
+        val2 = np.array(val)
         
         # grab template exodus file from HDFS
         
@@ -201,12 +202,12 @@ class MROutputExodus(MRJob):
             print >>sys.stderr, "Writing outputfile %s"%(os.path.join(outfile))
             newfile = ep.ExoFile(os.path.join(outfile),'w')  
             
-            result = insert_vars(templatefile, newfile, (self.variable,), (val,))
+            result = insert_vars(templatefile, newfile, (self.variable,), (val2,))
             
             #templatefile.change_nodal_vars2(newfile, time, (self.variable, ), (val,), ('d',))
             
-            newfile.src.sync() 
-            newfile.close()
+            newfile.cdf.sync() 
+            newfile.cdf.close()
             
             print >>sys.stderr, "Finished writing data, copying to Hadoop"
             

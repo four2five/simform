@@ -109,7 +109,7 @@ def convert(inputfile, fset, steps, outdir, variables, normalized_timesteps):
         end = begin + steps - 1
         if end > total_time_steps - 1:
             end = total_time_steps - 1
-        outputfilename = basename + '_part'+ str(i) + '.seq'
+        outputfilename = basename + str(fset) + '_part'+ str(i) + '.seq'
         
         writer = SequenceFile.createWriter(os.path.join(outdir,outputfilename),
             TypedBytesWritable, TypedBytesWritable,compression_type=CompressionType.RECORD)

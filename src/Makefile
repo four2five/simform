@@ -11,9 +11,9 @@
 #
 # Author = 'Yangyang Hou <hou13@purdue.edu>'
 
-name?=
+name?=runs
 dir?=
-variable?=
+variable?=TEMP
 outdir?=$(dir)output/
 
 setup_database: 

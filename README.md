@@ -33,6 +33,10 @@ Here are some commands I ran to do a quick analysis on the EC2 cluster:
 
 In this case, we had to normalize time-steps across the different files as the default step-length is variable.
 
+### Compute the global variance
+	$ make -f runs var
+	$ make -f runs outputvar
+
 ### Simple interpolation
 
     $ make -f runs predict design=design_points.txt points=new_points.txt

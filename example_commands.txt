@@ -18,6 +18,13 @@ Convert exodus files to sequence files:
 	make -f runs convert exodus2seq_output=hdfs://icme-hadoop1.localdomain/user/yangyang/simform/output/data.seq2/
 	(without using normalized timesteps, time: 20min24s)
 
+Compute the global variance:
+
+    make -f runs var
+    
+Output the global variance:
+
+    make -f runs outputvar
 
 Predict without SVD:
 

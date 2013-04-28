@@ -25,7 +25,8 @@ def insert_vars(source, destination, varNames, varVals):
     #Copy all dims for new exofile creation
 	for d in source.cdf.dimensions.keys():
 		if d == 'time_step':
-			destination.cdf.createDimension('time_step', source.cdf.dimensions['time_step'])
+			#destination.cdf.createDimension('time_step', source.cdf.dimensions['time_step'])
+			pass
 		elif d == 'num_nod_var':
 		    pass
 			#destination.cdf.createDimension(d,0)
@@ -47,10 +48,11 @@ def insert_vars(source, destination, varNames, varVals):
 		elif var == 'name_nod_var':
 			pass
 		elif var == 'time_whole':
-			getvar= source.cdf.variables[var]
-			vardata = getvar.getValue()
-			var1 = destination.cdf.createVariable(var,(getvar.typecode()),(getvar.dimensions))
-			var1.assignValue(vardata)
+			#getvar= source.cdf.variables[var]
+			#vardata = getvar.getValue()
+			#var1 = destination.cdf.createVariable(var,(getvar.typecode()),(getvar.dimensions))
+			#var1.assignValue(vardata)
+			pass
 		elif source.cdf.variables[var].dimensions[0] == 'time_step': # NOTE assume all time dimensions are in first dimension
 			continue
 		else:

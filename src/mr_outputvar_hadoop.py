@@ -17,74 +17,9 @@ import os
 from mrjob.job import MRJob
 from mrjob.compat import get_jobconf_value
 
-import exopy2 as ep
+import exopy as ep
 import numpy as np
 from subprocess import call, check_call, Popen, PIPE, STDOUT
-
-def insert_vars(source, destination, varNames, varVals):
-    #Copy all dims for new exofile creation
-	for d in source.cdf.dimensions.keys():
-		if d == 'time_step':
-			destination.cdf.createDimension('time_step', source.cdf.dimensions['time_step'])
-		elif d == 'num_nod_var':
-		    pass
-			#destination.cdf.createDimension(d,0)
-		else:
-			length = source.cdf.dimensions[d]
-			destination.cdf.createDimension(d,length)
-	
-	# put in new variable values
-	for (index,value) in enumerate(varVals):
-	    name = varNames[index]
-        tmp = destination.cdf.createVariable(name,('d'),('num_nodes',))
-        tmp.assignValue(value)
-        #destination.cdf.variables[name].assignValue(value)
-	
-	# Copy all variables for new exofile creation
-	for var in source.cdf.variables.keys():
-		if 'vals_nod_var' in var:
-			pass
-		elif var == 'name_nod_var':
-			pass
-		elif var == 'time_whole':
-			getvar= source.cdf.variables[var]
-			vardata = getvar.getValue()
-			var1 = destination.cdf.createVariable(var,(getvar.typecode()),(getvar.dimensions))
-			var1.assignValue(vardata)
-		elif source.cdf.variables[var].dimensions[0] == 'time_step': # NOTE assume all time dimensions are in first dimension
-			continue
-		else:
-			getvars = source.cdf.variables[var]
-			vardata = getvars.getValue()
-			thisvar= source.cdf.variables[var]
-			vartype  = thisvar.typecode()
-			var1 = destination.cdf.createVariable(var,(vartype) ,(thisvar.dimensions))
-			var1.assignValue(vardata)	
-			attList = dir(thisvar)
-			newattlist=[]
-			for i in range(len(attList)):
-				if attList[i] == 'assignValue':
-					pass
-				elif attList[i] == 'getValue':
-					pass
-				elif attList[i] == 'typecode':
-					pass
-				else:
-					newattlist.append(attList[i])
-			for a in newattlist:
-				attData = getattr(thisvar,a)
-				setattr(var1, a, attData)
-				
-	# copy remaining attributes
-	newattlist=[]
-	for attr in dir(source.cdf):
-		if attr not in dir(destination.cdf):
-			newattlist.append(attr)
-	for attr in newattlist:
-		attData = getattr(source.cdf,attr)
-		setattr(destination.cdf, attr, attData)
-		
-	return 0
 
 class MROutputExodus(MRJob):
 
@@ -202,13 +137,12 @@ class MROutputExodus(MRJob):
             print >>sys.stderr, "Writing outputfile %s"%(os.path.join(outfile))
             newfile = ep.ExoFile(os.path.join(outfile),'w')  
             
-            result = insert_vars(templatefile, newfile, (self.variable,), (val2,))
-            
-            #templatefile.change_nodal_vars2(newfile, time, (self.variable, ), (val,), ('d',))
-            
-            newfile.cdf.sync() 
-            newfile.cdf.close()
-            
+            time_steps = np.array([0.0])
+            templatefile.change_nodal_vars2(newfile, time_steps, [self.variable], [val2], ['d'])
+
+            newfile.src.sync()
+            newfile.close()
+
             print >>sys.stderr, "Finished writing data, copying to Hadoop"
             
             user = get_jobconf_value('mapreduce.job.user.name')

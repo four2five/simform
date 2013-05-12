@@ -31,6 +31,7 @@ from hadoop.io import SequenceFile
 from hadoop.io.SequenceFile import CompressionType
 from hadoop.typedbytes import *
 
+
 def linear_interpolate(x,x1,y1,x2,y2):
     slope = (y2 - y1)/(x2 - x1)
     y = (x - x1)*slope + y1
@@ -230,13 +231,14 @@ class MRExodus2Seq(MRJob):
             return self.filename2fset(fdir)
     
     def mapper(self, _, line):
+        print >>sys.stderr, "processing file %s"%(line) 
         # step 0: strip off unexpected characters
         line = line.split('\t')[1]
-        
         # step 1: fetch the exodus file from Hadoop cluster
         file = os.path.basename(line)
         if os.path.isfile(os.path.join('./', file)):
             call(['rm', os.path.join('./', file)])
+        print >>sys.stderr, "copying %s to %s"%(line, file) 
         check_call(['hadoop', 'fs', '-copyToLocal', line, os.path.join('./', file)])
         outdir = os.path.basename(line)
         ind = outdir.rfind('.')
@@ -247,6 +249,7 @@ class MRExodus2Seq(MRJob):
 
         # step 1a: determine its fset num
         fsetno = self.filename2fset(line)
+        print >>sys.stderr, "fsetno = %i"%(fsetno)
         
         # step 2: do our local processing
         if self.timestepfile is None:
@@ -257,8 +260,6 @@ class MRExodus2Seq(MRJob):
             for i in xrange(0, len(lines)):
                 lines[i]=float(lines[i].strip())
         
-
-           
         result = convert(os.path.join('./', file), fsetno, self.timesteps, os.path.join('./', outdir), self.variables,lines)
         
         # step3: write back to Hadoop cluster

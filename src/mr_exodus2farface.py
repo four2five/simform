@@ -129,19 +129,23 @@ class MRExodus2Farface(MRJob):
         line = line.split('\t')[1]
         # step 1: fetch the exodus file from Hadoop cluster
         file = os.path.basename(line)
-        if os.path.isfile(os.path.join('./', file)):
-            call(['rm', os.path.join('./', file)])
-        print >>sys.stderr, "copying %s to %s"%(line, file) 
-        check_call(['hadoop', 'fs', '-copyToLocal', line, os.path.join('./', file)])
+        localfile = os.path.join('./', file)
+        if os.path.isfile(localfile):
+            call(['rm', localfile])
+        
+        print >>sys.stderr, "copying %s to %s"%(line, localfile) 
+        check_call(['hadoop', 'fs', '-copyToLocal', line, localfile])
 
         # step 1a: determine its fset num
         fsetno = self.filename2fset(line)
         print >>sys.stderr, "fsetno = %i"%(fsetno)
                 
-        for key,val in extract_farface(
-                        os.path.join('./', file), 
+        for key,val in extract_farface(localfile, 
                         fsetno, self.variables):
             yield key, val
+
+        print >>sys.stderr, "removing localfile %s"%(localfile)
+        check_call(['rm',localfile])
 
 def test(inputfile,variable):
     for key,val in extract_farface(inputfile, -1,  variable):

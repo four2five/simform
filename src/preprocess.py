@@ -40,9 +40,16 @@ if call(['hadoop', 'fs', '-test', '-e', right_path]) == 0:
 tmpfile = open(os.path.join('./', 'input.txt'),'w')
 
 for file in files:
-    file = file.split(' ')
-    fname = file[len(file)-1]
+    file = file.split()
+    fname = ''
+    if len(file)!=0:
+        fname = file[len(file)-1] # get last entry
+        #print fname
     if fname.endswith('.e'):
+        fsize = int(file[4])
+        if fsize == 0:
+            print >> sys.stderr, "Skipping file %s because of zero size"%(fname)
+            continue
         basename = os.path.basename(fname)
         ind = basename.rfind('.')
         basename = basename[0:ind]

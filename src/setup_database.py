@@ -49,6 +49,7 @@ timesteps?=10
 tmpdir?=./
 timestepfile?=none
 numExodusfiles?=
+numParas?=numExodusfiles
 
 inputfile=$(outdir)input.txt
 exodus2seq_output?=$(outdir)data.seq/
@@ -61,6 +62,7 @@ exodusvar_output?=$(outdir)exodus.var/
 
 mseq_input=$(exodus2seq_output)*/*part*.seq
 mseq_output?=$(outdir)data.mseq/
+mseq2_output?=$(outdir)data.mseq2/
 
 model_input?=$(mseq_output)
 model_output?=$(outdir)model
@@ -168,6 +170,22 @@ seq2mseq:mr_seq2mseq_hadoop.py
 """
 
 
+File2Mseq="""
+seq2mseq2:mr_seq2mseq2_hadoop.py
+	@echo '========================================';\\
+	echo 'Converting sequence files to matrix sequence files...'; \\
+	hadoop fs -test -e $(mseq2_output) && \\
+	python check_time.py $(exodus2seq_output) $(mseq2_output) && \\
+	hadoop fs -rmr $(mseq2_output);\\
+	hadoop fs -test -e $(mseq2_output) || \\
+	time python mr_seq2mseq2_hadoop.py $(mseq_input) -r hadoop \\
+	--no-output -o $(mseq2_output) --variable $(variable) --numParas $(numParas); \\
+	echo 'Convert to matrix sequence files Done!';\\
+	echo '========================================'
+	
+file2mseq: convert seq2mseq2
+"""
+
 Model="""
 .PHONY: model
 model:
@@ -257,7 +275,7 @@ ifeq ($(SVD),True)
 endif
 endif
 """
-	
+
 Check="""
 check:
 """
@@ -280,6 +298,7 @@ makefile.write(Convert)
 makefile.write(Var)
 makefile.write(OutputVar)
 makefile.write(Seq2Mseq)
+makefile.write(File2Mseq)
 makefile.write(Model)
 makefile.write(Weights)
 makefile.write(Predict)

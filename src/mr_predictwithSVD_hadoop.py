@@ -63,6 +63,12 @@ class MRPredictwithSVD(MRJob):
         """
         input: (ith new exodus file, time), (node, val, err)
         output:(ith new exodus file, time), (valarray, errarray)
+
+        2013-04-29
+        The reduce groups all values and variances from a single time-step of
+        a simulation via their node id so that we don't have to store the
+        node id explicitly anymore and can just store an array instead.
+
         """
         
         val_order = {}

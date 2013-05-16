@@ -40,6 +40,11 @@ class MRSeq2Mseq(MRJob):
     
     def mapper(self, key, value):
         """
+        input: 
+          key = -1 => xcoord data
+          key = -2 => ycoord data
+          key = -3 => zcoord data
+          key = (fset, timestep) => value = array
         output: (timestep,node), (param,value)
         """
         # ignore coordinate (x,y,z) data
@@ -60,6 +65,7 @@ class MRSeq2Mseq(MRJob):
         """
         valarray = [val for val in values] # realize the 
         array = [0. for _ in xrange(len(valarray))]
+        print >>sys.stderr, "key, vals", key, valarray
         for val in valarray:
             pi = val[0]
             v = val[1]

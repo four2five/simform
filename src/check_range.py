@@ -29,6 +29,8 @@ def filename2fset(path):
     fdir,fname = os.path.split(path)
     if len(fname) == 0 and len(fdir) == 0:
         return -1
+    if len(fname) == 0 and fdir == '/':
+        return -1
     fsetnum=''
     for i,c in enumerate(fname):
         if c.isdigit():
@@ -52,6 +54,9 @@ for file in files:
     if fname.endswith('.e'):
         # get the fset no
         fsetno = filename2fset(fname)
+        if fsetno == -1: 
+            print >>sys.stderr, "Warning: unsequenced run %s"%(fname)
+            continue
         memmap[fsetno] = fsize
 
 lastfset = max(memmap.iterkeys())

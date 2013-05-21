@@ -41,6 +41,7 @@ tmpfile = open(os.path.join('./', 'input.txt'),'w')
 
 for file in files:
     file = file.split()
+    if len(file) == 0: continue
     fname = file[-1] # get last entry
     if fname.endswith('.e'):
         fsize = int(file[4])

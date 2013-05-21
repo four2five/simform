@@ -1,0 +1,236 @@
+# This is a makefile script to run scripts automatically
+#
+# Example usage:
+#     make -f dbsmall convert # convert exodus files to sequence files
+#     make -f dbsmall model # compute the SVD
+#     make -f dbsmall predict design=<design sites> points=<interpolation sites>
+#     make -f dbsmall check # make sure the database is "correct"
+#     make -f dbsmall var # compute the variance of the dataset
+#
+# Yangyang Hou  hou13@purdue.edu
+# Copyright (c) 2012
+
+dir?=hdfs://icme-hadoop1.localdomain/user/jatempl/random_media/run??/
+variable?=TEMP
+outdir?=hdfs://icme-hadoop1.localdomain/user/yangyang/dbsmall/
+
+SVD?=False
+
+timesteps?=10
+tmpdir?=./
+timestepfile?=none
+numExodusfiles?=
+numParas?=numExodusfiles
+
+inputfile=$(outdir)input.txt
+exodus2seq_output?=$(outdir)data.seq/
+
+var_input?=$(exodus2seq_output)*/*part*.seq
+var_output?=$(outdir)data.var/
+
+exodusvar_input?=$(var_output)p*
+exodusvar_output?=$(outdir)exodus.var/
+
+mseq_input=$(exodus2seq_output)*/*part*.seq
+mseq_output?=$(outdir)data.mseq/
+mseq2_output?=$(outdir)data.mseq2/
+
+model_input?=$(mseq_output)
+model_output?=$(outdir)model
+
+predict_input=$(exodus2seq_output)*/*part*.seq
+predict_output?=$(outdir)predict/noSVD/
+design?=
+points?=
+
+
+predict_SVD_input?=$(model_output)_4/
+predict_SVD_output?=$(outdir)predict/SVD/
+weights?=
+
+seq2exodus_input?=$(predict_output)part*
+seq2exodus_output?=$(outdir)interpexodus_noSVD/
+
+seq2exodus_SVD_input?=$(predict_SVD_output)part*
+seq2exodus_SVD_output?=$(outdir)interpexodus_SVD/
+output_name?=
+
+
+preprocess: preprocess.py grabtemplate.py
+	@echo '========================================';\
+	echo 'Preprocessing...';\
+	python preprocess.py $(dir) $(exodus2seq_output) $(variable) $(inputfile);\
+	echo 'Preprocess Done!'; \
+	echo '========================================'
+
+simform-deploy.tar.gz: exopy2.py exopy.py
+	tar czf simform-deploy.tar.gz exopy2.py exopy.py
+	
+convert: mr_exodus2seq_hadoop.py simform-deploy.tar.gz
+ifeq ($(timestepfile),none)
+	@echo '========================================';\
+	echo 'Converting exodus files to sequence files...';\
+	hadoop fs -test -z $(inputfile) || time python mr_exodus2seq_hadoop.py \
+	$(inputfile) -r hadoop --python-archive simform-deploy.tar.gz \
+	-t $(timesteps) -d $(exodus2seq_output) --variables $(variable) --no-output; \
+	echo 'Convert exodus files to sequence files Done!'; \
+	echo '========================================'
+else
+	@echo '========================================';\
+	echo 'Converting exodus files to sequence files using normalized timesteps...';\
+	test -e $(timestepfile) || echo 'The timestepfile does not exist!'; \
+	test -e $(timestepfile) && hadoop fs -test -z $(inputfile) \
+	|| time python mr_exodus2seq_hadoop.py \
+	$(inputfile) -r hadoop --python-archive simform-deploy.tar.gz --no-output \
+	-t $(timesteps) -d $(exodus2seq_output) --variables $(variable) \
+	--timestepfile $(timestepfile)  --file $(timestepfile) && \
+	echo 'Convert exodus files to sequence files using normalized timesteps Done!'; \
+	echo '========================================'
+endif
+	
+
+var:mr_globalvar_hadoop.py
+	@echo '========================================';\
+	echo 'Computing the variance for the dataset...'; \
+	hadoop fs -test -e $(var_output) && \
+	python check_time.py $(exodus2seq_output) $(var_output) && \
+	hadoop fs -rmr $(var_output);\
+	hadoop fs -test -e $(var_output) || \
+	time python mr_globalvar_hadoop.py $(var_input) -r hadoop \
+	--no-output -o $(var_output) --variable $(variable); \
+	echo 'Compute the variance Done!';\
+	echo '========================================'
+	
+
+outputvar:mr_outputvar_hadoop.py
+	@echo '========================================';\
+	echo 'Converting the global variance to the exodus files...'; \
+	hadoop fs -test -e $(exodusvar_output) && \
+	python check_time.py $(var_output) $(exodusvar_output) && \
+	hadoop fs -rmr $(exodusvar_output);\
+	hadoop fs -test -e $(exodusvar_output) || \
+	time python mr_outputvar_hadoop.py $(exodusvar_input) --outputname global_var \
+	--variable $(variable)_VAR  --outdir $(exodusvar_output) --indir $(dir) -r hadoop \
+	--python-archive simform-deploy.tar.gz --no-output; \
+	echo 'Convert the variance to the exodus file Done!';\
+	echo '========================================'
+	
+
+seq2mseq:mr_seq2mseq_hadoop.py
+	@echo '========================================';\
+	echo 'Converting sequence files to matrix sequence files...'; \
+	hadoop fs -test -e $(mseq_output) && \
+	python check_time.py $(exodus2seq_output) $(mseq_output) && \
+	hadoop fs -rmr $(mseq_output);\
+	hadoop fs -test -e $(mseq_output) || \
+	time python mr_seq2mseq_hadoop.py $(mseq_input) -r hadoop \
+	--no-output -o $(mseq_output) --variable $(variable); \
+	echo 'Convert to matrix sequence files Done!';\
+	echo '========================================'
+	
+
+seq2mseq2:mr_seq2mseq2_hadoop.py
+	@echo '========================================';\
+	echo 'Converting sequence files to matrix sequence files...'; \
+	hadoop fs -test -e $(mseq2_output) && \
+	python check_time.py $(exodus2seq_output) $(mseq2_output) && \
+	hadoop fs -rmr $(mseq2_output);\
+	hadoop fs -test -e $(mseq2_output) || \
+	time python mr_seq2mseq2_hadoop.py $(mseq_input) -r hadoop \
+	--no-output -o $(mseq2_output) --variable $(variable) --numParas $(numParas); \
+	echo 'Convert to matrix sequence files Done!';\
+	echo '========================================'
+	
+file2mseq: convert seq2mseq2
+
+.PHONY: model
+model:
+	@echo '========================================';\
+	echo 'SVD Modeling...';\
+	cd model; \
+	python run_full_tsqr.py --input=$(model_input) \
+	--ncols=$(numExodusfiles) --svd=2 --schedule=100,100,100 \
+	--hadoop=/usr/lib/hadoop --local_output=tsqr-tmp \
+	--output=$(model_output); \
+	cd ..; \
+	echo 'SVD Model Done!';\
+	echo '========================================'
+
+
+# create weights.txt file for predicting with SVD
+
+predict:mr_predict_hadoop.py mr_predictwithSVD_hadoop.py 
+ifeq ($(SVD),False)
+	@echo '========================================';\
+	echo 'Predicting directly using existing exodus files database...';\
+	test -e $(design) || echo 'The design sites file does not exist!'; \
+	test -e $(points) || echo 'The interpolation sites file does not exist!'; \
+	test -e $(design) && test -e $(points) && \
+	hadoop fs -test -e $(predict_output) && \
+	python check_time.py $(exodus2seq_output) $(predict_output) && \
+	hadoop fs -rmr $(predict_output);\
+	test -e $(design) && test -e $(points) && \
+	(hadoop fs -test -e $(predict_output) || \
+	time python mr_predict_hadoop.py $(predict_input) -r hadoop --no-output \
+	-o $(predict_output) --variable $(variable) \
+	--design=$(design) --points=$(points) --file $(design) --file $(points)); \
+	echo 'Prediction Done!'; \
+	echo '========================================' 
+else
+ifeq ($(SVD),True)
+	@echo '========================================';\
+	echo 'Predicting with SVD model...';\
+	test -e $(weights) || echo 'The weights file does not exist!'; \
+	test -e $(weights) && \
+	hadoop fs -test -e $(predict_SVD_output) && \
+	python check_time.py $(predict_SVD_input) $(predict_SVD_output) && \
+	hadoop fs -rmr $(predict_SVD_output); \
+	test -e $(weights) && \
+	(hadoop fs -test -e $(predict_SVD_output) || \
+	time python mr_predictwithSVD_hadoop.py $(predict_SVD_input) -r hadoop --no-output \
+	-o $(predict_SVD_output)  \
+	--weights=$(weights)  --file $(weights) ); \
+	echo 'Prediction Done!'; \
+	echo '========================================' 
+endif
+endif
+
+seq2exodus: mr_outputexodus_hadoop.py mr_outputexoduswithSVD_hadoop.py simform-deploy.tar.gz
+ifeq ($(SVD),False)
+	@echo '========================================'; \
+	echo 'Converting interpolated sequence files to interpolated exodus files...'; \
+	hadoop fs -test -e $(seq2exodus_output) && \
+	python check_time.py $(predict_output) $(seq2exodus_output) && \
+	hadoop fs -rmr $(seq2exodus_output);\
+	hadoop fs -test -e $(seq2exodus_output) || \
+	time python mr_outputexodus_hadoop.py $(seq2exodus_input) --outputname $(output_name) \
+	--variable $(variable)  --outdir $(seq2exodus_output) --indir $(dir) -r hadoop \
+	--python-archive simform-deploy.tar.gz --no-output; \
+	echo 'Convert to new interpolated exodus files Done!';\
+	echo '========================================'
+else
+ifeq ($(SVD),True)
+	@echo '========================================'; \
+	echo 'Converting interpolated sequence files to interpolated exodus files with SVD...'; \
+	hadoop fs -test -e $(seq2exodus_SVD_output) && \
+	python check_time.py $(predict_SVD_output) $(seq2exodus_SVD_output) && \
+	hadoop fs -rmr $(seq2exodus_SVD_output);\
+	hadoop fs -test -e $(seq2exodus_SVD_output) || \
+	time python mr_outputexoduswithSVD_hadoop.py $(seq2exodus_SVD_input) --outputname $(output_name) \
+	--variable $(variable)  --outdir $(seq2exodus_SVD_output) --indir $(dir) -r hadoop \
+	--python-archive simform-deploy.tar.gz --no-output; \
+	echo 'Convert to new interpolated exodus files Done!'; \
+	echo '========================================'
+endif
+endif
+
+check:
+
+.PHONY: clean 
+clean:
+	@echo '========================================';\
+	echo 'Removing temporary files in local and on HDFS...';\
+	test -e $(tmpdir)tmp && rm -r $(tmpdir)tmp;\
+	hadoop fs -rm $(inputfile);\
+	echo 'Clean Done!'; \
+	echo '========================================'

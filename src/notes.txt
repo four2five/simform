@@ -1,0 +1,5 @@
+Generate a small database for testing
+
+make setup_database variable=TEMP dir=hdfs://icme-hadoop1.localdomain/user/jatempl/random_media/run? outdir=hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbsmall name=dbsmall
+
+Change it's input file

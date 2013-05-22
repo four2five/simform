@@ -23,7 +23,8 @@ p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=Tru
 content = p.stdout.read()
 files = content.split('\n')
 
-dirs2 = []
+newpath = False
+dirs2 = [] # These are directories that already exist in the output path
 if call(['hadoop', 'fs', '-test', '-e', right_path]) == 0:
     cmd = 'hadoop fs -ls '+ os.path.join(right_path)
     p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
@@ -36,7 +37,9 @@ if call(['hadoop', 'fs', '-test', '-e', right_path]) == 0:
             if basename != var:
                 #print basename
                 dirs2.append(basename)
-
+else:
+    newpath = True
+print newpath
 tmpfile = open(os.path.join('./', 'input.txt'),'w')
 
 for file in files:
@@ -45,6 +48,7 @@ for file in files:
     fname = file[-1] # get last entry
     if fname.endswith('.e'):
         fsize = int(file[4])
+        print "Processing %s"%(fname)
         if fsize == 0:
             print >> sys.stderr, "Skipping file %s because of zero size"%(fname)
             continue
@@ -54,9 +58,11 @@ for file in files:
         outdir = os.path.join(right_path, basename)
         fname = prefix + fname
         result = True
-        if call(['hadoop', 'fs', '-test', '-e', outdir]) == 0:
+        # only check it it exists if it isn't entirely a new path
+        if newpath is False and call(['hadoop', 'fs', '-test', '-e', outdir]) == 0:
             #print outdir
-            dirs2.remove(basename)
+            dirs2.remove(basename) # this is an existing directory 
+                                   # we don't need to delete
             result = checktime(fname, outdir)
             if result:
                 check_call(['hadoop', 'fs', '-rmr', outdir])

@@ -46,6 +46,9 @@ class MRSeq2Mseq(MRJob):
           key = -2 => ycoord data
           key = -3 => zcoord data
           key = (fset, timestep) => value = array
+          
+            where timestep is a pair:
+                (ti, time) and ti is the index
         output: key = timestep, value = simulation number
         """
         # ignore coordinate (x,y,z) data
@@ -58,19 +61,22 @@ class MRSeq2Mseq(MRJob):
                     yield t, p
      
 
-    def reducer(self, key, values): 
-        """ 
-        Each key is a timestep pair.  Each value is sim-number pair.
-        We want to make an array of all sim-numbers for each timestep
-        """
-        valarray = [val for val in values] # realize the 
-        valarray.sort()
-        yield key, valarray
+    # removed so that the final output of just the map is
+    # index, time, simulation no
+    # this is easy to load into Matlab then!
+    #def reducer(self, key, values): 
+        #""" 
+        #Each key is a timestep pair.  Each value is sim-number pair.
+        #We want to make an array of all sim-numbers for each timestep
+        #"""
+        #valarray = [val for val in values] # realize the 
+        #valarray.sort()
+        #yield key, valarray
         
         
         
     def steps(self):
-        return [self.mr(self.mapper, self.reducer),]
+        return [self.mr(self.mapper),]
 
 if __name__ == '__main__':
     MRSeq2Mseq.run()

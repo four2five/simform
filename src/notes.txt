@@ -1,5 +1,51 @@
 Generate a small database for testing
+-----------
 
-make setup_database variable=TEMP dir=hdfs://icme-hadoop1.localdomain/user/jatempl/random_media/run? outdir=hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbsmall name=dbsmall
+    make setup_database variable=TEMP dir=hdfs://icme-hadoop1.localdomain/user/jatempl/random_media/run? outdir=hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbsmall name=dbsmall
 
 Change it's input file
+
+    make -f dbsmall preprocess
+
+    bash make_db_small_input.sh
+
+    hadoop fs -rm hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbsmall/input.txt
+    hadoop fs -put input.txt hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbsmall/input.txt
+
+Convert it to seq files
+
+    make -f dbsmall convert
+    
+Check the timesteps    
+    
+    python mr_seq_timestep_check.py \
+    hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbsmall/data.seq/random_media/random_media*.seq \
+    -r hadoop --no-output --variable TEMP -o hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbsmall/timesteps.seq
+    
+    dumbo cat hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbsmall/timesteps.seq
+
+The output of this file is:
+
+timestep index     time step     simulation number
+
+
+Full database
+
+
+Dump out the farface
+
+time python mr_exodus2farface.py \
+     hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbfull/input.txt \
+        -r hadoop --python-archive simform-deploy.tar.gz \
+        --variables TEMP -o
+hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbfull/farface.txt
+--no-output  \
+        --jobconf mapred.line.input.format.linespermap=10
+        
+
+Convert
+
+Add jobconf linespermap=10 to dbfull
+
+make -f runs convert timestepfile=tsteps.txt timesteps=1 
+

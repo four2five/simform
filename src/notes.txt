@@ -30,6 +30,23 @@ timestep index     time step     simulation number
 
 
 Full database
+-------------
+
+
+
+Create the time-steps file to normalize all the times:
+
+    cat tsteps.txt
+    1250.0
+    1350.0
+    1450.0
+    1550.0
+    1650.0
+    1750.0
+    1850.0
+    1950.0
+    2000.0
+
 
 
 Dump out the farface
@@ -42,10 +59,16 @@ hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbfull/farface.txt
 --no-output  \
         --jobconf mapred.line.input.format.linespermap=10
         
+Took 
+ 2hrs, 24mins, 21sec        
 
 Convert
 
 Add jobconf linespermap=10 to dbfull
 
-make -f runs convert timestepfile=tsteps.txt timesteps=1 
+make -f runs convert timestepfile=tsteps.txt 
+
+Time = 
+real    883m10.961s
+
 

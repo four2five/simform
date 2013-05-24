@@ -14,11 +14,20 @@ import util
 import os
 import full
 
+# 2013-05-24: dgleich - Added subset option
+
 # create the global options structure
 gopts = util.GlobalOptions()
 
 def runner(job):
-    mapper = full.FullTSQRMap1()
+    subset = gopts.getstrkey('subset')
+    if subset is 'all':
+        subset = None
+    else:
+        subset = [int(_) for _ in subset.split(',')]
+        
+    mapper = full.FullTSQRMap1(subset=subset)
+        
     reducer = mrmc.ID_REDUCER
     job.additer(mapper=mapper,reducer=reducer,opts=[('numreducetasks',str(0))])
 
@@ -28,6 +37,13 @@ def starter(prog):
 
     mat = mrmc.starter_helper(prog, True)
     if not mat: return "'mat' not specified"
+    
+    gopts.getstrkey('subset','all')
+    subset = prog.getopt('subset')
+    if subset:
+        # check parsing
+        subset = [int(_) for _ in subset.split(,)]
+        # then ignore
 
     matname,matext = os.path.splitext(mat)
     output = prog.getopt('output')

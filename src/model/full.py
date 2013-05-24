@@ -35,26 +35,34 @@ Output:
 """
 @opt("getpath", "yes")
 class FullTSQRMap1(mrmc.MatrixHandler):
-    def __init__(self):
+    def __init__(self,subset=None):
         mrmc.MatrixHandler.__init__(self)
         self.keys = []
         self.data = []
         self.mapper_id = uuid.uuid1().hex
-    
-    def collect(self,key,value):
-        if self.ncols == None:
-            self.ncols = len(value)
-            print >>sys.stderr, "Matrix size: %i columns"%(self.ncols)
-        else:
-            assert(len(value) == self.ncols)
-
-        self.keys.append(key)
-        self.data.append(value)
-        self.nrows += 1
+        self.subset = subset
         
-        # write status updates so Hadoop doesn't complain
+    def add_row(self,row):
+        self.data.append(row)
+        self.nrows += 1
+                
         if self.nrows%50000 == 0:
             self.counters['rows processed'] += 50000
+        
+    def multicollect(self,key,value):
+        """ Collect multiple rows at once with a single key. """
+        nkeys = len(value)
+        newkey = ('multi',nkeys,key)
+        
+        self.keys.append(newkey)
+        
+        for row in value:
+            self.add_row(row.tolist())
+    
+    def collect(self,key,value):
+
+        self.keys.append(key)
+        self.add_row(row)
 
     def close(self):
         self.counters['rows processed'] += self.nrows%50000
@@ -62,8 +70,14 @@ class FullTSQRMap1(mrmc.MatrixHandler):
         # if no data was passed to this task, we just return
         if len(self.data) == 0:
             return
+            
+        # take the subset here so we can use numpy array indexing
+        # semantics
+        mat = numpy.array(self.data)
+        if self.subset is not None:
+            mat = mat[:,self.subset]
 
-        QR = numpy.linalg.qr(numpy.array(self.data))
+        QR = numpy.linalg.qr(mat)
         Q = QR[0].tolist()
 
         yield ("R_%s" % str(self.mapper_id), self.mapper_id), QR[1].tolist()
@@ -203,46 +217,63 @@ class FullTSQRMap3(dumbo.backends.common.MapRedBase):
                 self.Q2_data[key] = mat
         f.close()
 
-    # key1: unique mapper_id
-    # key2: row identifier
-    # value: row of Q1
-    def collect(self, key1, key2, value):
-        row = [float(val) for val in value]
-        if self.ncols is None:
-            self.ncols = len(row)
         
-        if key1 not in self.Q1_data:
-            self.Q1_data[key1] = []
-            assert(key1 not in self.row_keys)
-            self.row_keys[key1] = []
-
-        self.Q1_data[key1].append(row)
-        self.row_keys[key1].append(key2)
+    def collect(self, mapkey, rowkeys, mat):
+        """
+        @param mapkey the unique mapper id
+        @param rowkeys a list of keys for all the rows
+        @param mat a matrix representing a block of rows of Q1
+        
+        It is not possible to get multiple blocks from a unique mapper id
+        """       
+        
+        assert( key1 not in self.Q1_data )
+        
+        self.Q1_data[key1] = mat
+        self.row_keys[key1] = rowkeys
+            
 
     def close(self):
         # parse the q2 file we were given
         self.parse_q2()
         
         for key in self.Q1_data:
+            # for each little chunk output by a mapper
             assert(key in self.row_keys)
             assert(key in self.Q2_data)
-            Q1 = numpy.mat(self.Q1_data[key])
+            Q1 = self.Q1_data[key]
+            
             Q2 = numpy.mat(self.Q2_data[key])
-            Q_out = Q1*Q2
-            for i, row in enumerate(Q_out.getA()):
-                row = row.tolist()
-                yield self.row_keys[key][i], struct.pack('d'*len(row), *row)
+            
+            Q_out = (Q1*Q2).getA() # compute product and get array
+            
+            # decode the key output
+            rowoff = 0
+            for key in self.row_keys[key]:
+                if isinstance(key, tuple) and key[0] == 'multi':
+                    # this is a multikey = ('multi',nkeys,origkey)
+                    nkeys = key[1]
+                    origkey = key[2]
+                    block = Q_out[rowoff:rowoff+nkeys]
+                    rowoff += nkeys
+                    yield origkey, block
+                else:
+                    yield key, Q.out[rowoff].tolist()
 
     def __call__(self, data):
         for key, val in data:
+            # key is a mapper id
+            # value stores the local Q matrix 
+            #   and the list of keys
             matrix, keys = val
             num_entries = len(matrix) / 8
             assert (num_entries % self.ncols == 0)
             mat = list(struct.unpack('d'*num_entries, matrix))
             mat = numpy.mat(mat)
             mat = numpy.reshape(mat, (num_entries / self.ncols , self.ncols))
-            for i, value in enumerate(mat.tolist()):
-                self.collect(key, keys[i], value)
+            
+            self.collect(key, keys, mat)
+        
 
         for key, val in self.close():
             yield key, val

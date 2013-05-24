@@ -43,6 +43,8 @@ parser.add_option('-t', '--times_output', dest='times_out', default='times',
                   help='Base directory for placing local files')
 parser.add_option('-n', '--ncols', type='int', dest='ncols', default=0,
                   help='number of columns in the matrix')
+parser.add_option('--subset', dest='subset', default=None,
+                  help='number of columns in the matrix')
 parser.add_option('-s', '--schedule', dest='sched', default='100,100,100',
                   help='comma separated list of number of map tasks to use for'
                        + ' the three jobs')
@@ -80,6 +82,17 @@ if os.path.exists(local_out):
   shutil.rmtree(local_out)
 os.mkdir(local_out)
 
+def copy_and_parse_locally(hdfspath, localpath):
+  parsedext='.out' # TODO dgleich make this an option, but it's baked into
+                   # cm.parse_seq_file right now
+  parsedfile = localpath + parsedext
+  if os.path.exists(localpath):
+    os.remove(localpath)
+  if os.path.exists(parsedfile):
+    os.remove(parsedfile)
+  cm.copy_from_hdfs(hdfspath, localpath)
+  cm.parse_seq_file(localpath)
+
 times_out = options.times_out
 
 ncols = options.ncols
@@ -97,11 +110,19 @@ except:
 
 hadoop = options.hadoop
 
+# handle subset
+if options.subset is None:
+    # default option
+    subsetopt = ''
+else:
+    subsetopt = '-subset %s'%(options.subset)  
+
 
 # Now run the MapReduce jobs
 out1 = out + '_1'
 cm.run_dumbo('full1.py', hadoop, ['-mat ' + in1, '-output ' + out1,
                                   '-nummaptasks %d' % sched[0],
+                                  subsetopt,
                                   '-libjar feathers.jar'])
 
 out2 = out + '_2'
@@ -112,15 +133,7 @@ cm.run_dumbo('full2.py', hadoop, ['-mat ' + out1 + '/R_*', '-output ' + out2,
 
 # Q2 file needs parsing before being distributed to phase 3
 Q2_file = out_file('Q2.txt')
-
-if os.path.exists(Q2_file):
-  os.remove(Q2_file)
-
-if os.path.exists(Q2_file + '.out'):
-  os.remove(Q2_file + '.out')
-
-cm.copy_from_hdfs(out2 + '/Q2', Q2_file)
-cm.parse_seq_file(Q2_file)
+copy_and_parse_locally(out2+'/Q2', Q2_file)
 
 in3 = out1 + '/Q_*'
 cm.run_dumbo('full3.py', hadoop, ['-mat ' + in3, '-output ' + out + '_3',
@@ -130,15 +143,11 @@ cm.run_dumbo('full3.py', hadoop, ['-mat ' + in3, '-output ' + out + '_3',
                                   '-libjar feathers.jar'])
 
 if svd_opt == 2:
-  small_U_file = out_file('U.txt')
-
-  if os.path.exists(small_U_file):
-    os.remove(small_U_file)
-  if os.path.exists(small_U_file + '.out'):
-    os.remove(small_U_file + '.out')
-
-  cm.copy_from_hdfs(out2 + '/U', small_U_file)
-  cm.parse_seq_file(small_U_file)
+  small_U_file = out_file('U.txt')    
+  copy_and_parse_locally(out2+'/U', small_U_file)
+  copy_and_parse_locally(out2+'/Sigma', out_file('Sigma.txt'))
+  copy_and_parse_locally(out2+'/Vt', out_file('Vt.txt'))
+  
 
   # We need an addition TS matrix multiply to get the left singular vectors
   out4 = out + '_4'

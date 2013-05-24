@@ -98,6 +98,20 @@ class MatrixHandler(dumbo.backends.common.MapRedBase):
                 value = self.unpacker.unpack(value)
             else:
                 value = [float(p) for p in value.split()]
+        elif isinstance(value, numpy.ndarray):
+            # verify column size
+            if value.ndim == 2:
+                # it's a block
+                if self.ncols == None:
+                    self.ncols = value.shape[1]
+                if value.shape[1] != self.ncols:
+                    raise DataFormatException(
+                        'Number of columns in value did not match number of columns in matrix')
+                
+                self.multicollect(key, value)
+                return
+            else:
+                value = value.tolist() # convert and continue below
 
         if self.ncols == None:
             self.ncols = len(value)

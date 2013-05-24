@@ -259,6 +259,7 @@ class FullTSQRMap3(dumbo.backends.common.MapRedBase):
                     yield origkey, block
                 else:
                     yield key, Q.out[rowoff].tolist()
+                    rowoff += 1
 
     def __call__(self, data):
         for key, val in data:

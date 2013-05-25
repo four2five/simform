@@ -72,3 +72,39 @@ Time =
 real    883m10.961s
 
 
+
+Tiny test
+---------
+
+    make setup_database variable=TEMP dir=hdfs://icme-hadoop1.localdomain/user/jatempl/random_media/run? outdir=hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbtest name=dbtest
+
+   mv dbtest dbtest.dgleich
+
+Add numParams?=16
+    numExodusfiles?=16
+    timesteps?=tstepstest.txt
+    mr_seq2mseq2_hadoop.py -> mr_seq2mseq5_hadoop.py
+
+     (5 is a special version to parse the parameter numbers correctly for this
+one)
+
+    make -f dbtest.dgleich preprocess
+
+
+Use this timesteps file
+
+cat tstepstest.txt 
+1250.0
+1650.0
+2000.0
+
+Fix up the input list
+
+    bash make_db_test_input.sh
+
+    hadoop fs -rm
+hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbtest/input.txt
+    hadoop fs -put inputtest.txt
+hdfs://icme-hadoop1.localdomain/user/dgleich/rm-sisc/dbtest/input.txt i
+
+

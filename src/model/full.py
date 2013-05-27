@@ -78,11 +78,12 @@ class FullTSQRMap1(mrmc.MatrixHandler):
 
         QR = numpy.linalg.qr(mat)
         Q = QR[0].tolist()
-
+        print >>sys.stderr, "yielding R"
         yield ("R_%s" % str(self.mapper_id), self.mapper_id), QR[1].tolist()
 
         flat_Q = [entry for row in Q for entry in row]
         val = (struct.pack('d'*len(flat_Q), *flat_Q), self.keys)
+        print >>sys.stderr, "yielding Q"
         yield ("Q_%s" % str(self.mapper_id), self.mapper_id), val
 
 

@@ -51,7 +51,7 @@ See the demo directory.
 
     sudo apt-get install python-dev python-numpy \
         python-setuptools python-netcdf \
-        libatlast3gf-base
+        libatlas3gf-base
         
     sudo easy_install -z typedbytes 
     sudo easy_install ctypedbytes

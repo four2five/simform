@@ -60,9 +60,8 @@ class FullTSQRMap1(mrmc.MatrixHandler):
             self.add_row(row.tolist())
     
     def collect(self,key,value):
-
         self.keys.append(key)
-        self.add_row(row)
+        self.add_row(value)
 
     def close(self):
         self.counters['rows processed'] += self.nrows%50000
@@ -237,19 +236,19 @@ class FullTSQRMap3(dumbo.backends.common.MapRedBase):
         # parse the q2 file we were given
         self.parse_q2()
         
-        for key in self.Q1_data:
+        for mapkey in self.Q1_data:
             # for each little chunk output by a mapper
-            assert(key in self.row_keys)
-            assert(key in self.Q2_data)
-            Q1 = self.Q1_data[key]
+            assert(mapkey in self.row_keys)
+            assert(mapkey in self.Q2_data)
+            Q1 = self.Q1_data[mapkey]
             
-            Q2 = numpy.mat(self.Q2_data[key])
+            Q2 = numpy.mat(self.Q2_data[mapkey])
             
             Q_out = (Q1*Q2).getA() # compute product and get array
             
             # decode the key output
             rowoff = 0
-            for key in self.row_keys[key]:
+            for key in self.row_keys[mapkey]:
                 if isinstance(key, tuple) and key[0] == 'multi':
                     # this is a multikey = ('multi',nkeys,origkey)
                     nkeys = key[1]

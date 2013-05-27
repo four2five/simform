@@ -62,8 +62,8 @@ for i, sizes in enumerate(blocksizes):
             key = (row, row+bsize)
             row += bsize
             val = random.randn(bsize,ncols)
-            for row in val:
-                fullmat.append(row.tolist())
+            for eachrow in val:
+                fullmat.append(eachrow.tolist())
                 
         tbkey = TypedBytesWritable()
         tbkey.set(key)

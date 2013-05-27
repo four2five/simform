@@ -1,7 +1,15 @@
-#hadoop fs -mkdir mrmc-test
-#mkdir test
+hadoop fs -mkdir mrmc-test
+mkdir test
 
-#python generate_mseq2_test.py
+python generate_mseq2_test.py
 
-python run_full_tsqr.py --input=mrmc-test/test-matrix-* --output=mrmc-test/ \
-   --ncols=4 --svd=2 --hadoop=/usr/lib/hadoop --local_output=test 
+python run_full_tsqr.py --input=mrmc-test/test-matrix-?.mseq2 --output=mrmc-test/test-matrix-svd \
+   --ncols=4 --svd=2 --hadoop=/usr/lib/hadoop --local_output=test-mrmc \
+   --schedule=2,2,2
+   
+hadoop fs -get mrmc-test/test-matrix-svd_4/part-* test/
+
+python hyy-python-hadoop/examples/SequenceFileReader/part-00000
+python hyy-python-hadoop/examples/SequenceFileReader/part-00001
+
+# compare to SVD of test/test-matrix.txt 

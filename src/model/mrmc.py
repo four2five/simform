@@ -250,17 +250,40 @@ class TSMatMul(MatrixHandler):
 
         t0 = time.time()
         A = numpy.mat(self.data)
-        out_mat = A * self.small
+        out_mat = (A * self.small).getA()
         dt = time.time() - t0
         self.counters['numpy time (millisecs)'] += int(1000 * dt)
 
         # reset data and add flushed update to local copy
         self.data = []
-        for i, row in enumerate(out_mat.getA()):
-            yield self.keys[i], row
+        
+        rowoff = 0
+        for key in self.keys:
+            if isinstance(key, tuple) and key[0] == 'multi':
+                # this is a multikey = ('multi',nkeys,origkey)
+                nkeys = key[1]
+                origkey = key[2]
+                block = out_mat[rowoff:rowoff+nkeys]
+                rowoff += nkeys
+                yield origkey, block
+            else:
+                yield key, out_mat[rowoff].tolist()
+                rowoff += 1
 
         # clear the keys
         self.keys = []
+        
+    def multicollect(self, key, values):
+        self.keys.append(('multi', len(values), key))
+        
+        for row in values:
+            self.data.append(row)
+            self.nrows += 1
+            
+            # write status updates so Hadoop doesn't complain
+            if self.nrows%50000 == 0:
+                self.counters['rows processed'] += 50000
+        
     
     def collect(self, key, value):
         self.keys.append(key)

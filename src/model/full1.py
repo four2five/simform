@@ -21,7 +21,7 @@ gopts = util.GlobalOptions()
 
 def runner(job):
     subset = gopts.getstrkey('subset')
-    if subset is 'all':
+    if subset == 'all':
         subset = None
     else:
         subset = [int(_) for _ in subset.split(',')]
@@ -38,11 +38,10 @@ def starter(prog):
     mat = mrmc.starter_helper(prog, True)
     if not mat: return "'mat' not specified"
     
-    gopts.getstrkey('subset','all')
-    subset = prog.getopt('subset')
-    if subset:
+    subset = gopts.getstrkey('subset','all')
+    if subset != 'all':
         # check parsing
-        subset = [int(_) for _ in subset.split(,)]
+        subset = [int(_) for _ in subset.split(',')]
         # then ignore
 
     matname,matext = os.path.splitext(mat)

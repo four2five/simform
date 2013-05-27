@@ -227,10 +227,10 @@ class FullTSQRMap3(dumbo.backends.common.MapRedBase):
         It is not possible to get multiple blocks from a unique mapper id
         """       
         
-        assert( key1 not in self.Q1_data )
+        assert( mapkey not in self.Q1_data )
         
-        self.Q1_data[key1] = mat
-        self.row_keys[key1] = rowkeys
+        self.Q1_data[mapkey] = mat
+        self.row_keys[mapkey] = rowkeys
             
 
     def close(self):

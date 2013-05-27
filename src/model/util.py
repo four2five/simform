@@ -156,6 +156,10 @@ class CommandManager:
             cmd += ' '
             cmd += opt
         self.exec_cmd(cmd)
+        
+    def exists_in_hdfs(self, inp):
+        exists_cmd = 'hadoop fs -test -e %s' % (inp)
+        return self.exec_cmd(exists_cmd)
 
     def copy_from_hdfs(self, inp, outp, delete=True):
         if delete and os.path.exists(outp):
@@ -164,7 +168,9 @@ class CommandManager:
                    + '%s/part-00000 %s' % (inp, outp)
         self.exec_cmd(copy_cmd)
 
-    def copy_to_hdfs(self, inp, outp):
+    def copy_to_hdfs(self, inp, outp, overwrite=False):
+        if overwrite and self.exists_in_hdfs(outp):
+          self.exec_cmd('hadoop fs -rmr %s' % (outp))
         copy_cmd = 'hadoop fs -copyFromLocal %s %s' % (inp, outp)
         self.exec_cmd(copy_cmd)
 

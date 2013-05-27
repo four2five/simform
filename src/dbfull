@@ -19,7 +19,7 @@ SVD?=False
 timesteps?=10
 tmpdir?=./
 timestepfile?=none
-numExodusfiles?=
+numExodusfiles?=64
 numParas?=64
 
 inputfile=$(outdir)input.txt
@@ -152,10 +152,11 @@ model:
 	@echo '========================================';\
 	echo 'SVD Modeling...';\
 	cd model; \
-	python run_full_tsqr.py --input=$(model_input) \
-	--ncols=$(numExodusfiles) --svd=2 --schedule=100,100,100 \
-	--hadoop=/usr/lib/hadoop --local_output=tsqr-tmp \
-	--output=$(model_output); \
+	python run_full_tsqr.py --input=$(mseq2_output) \
+	--ncols=$(numExodusfiles) --svd=3 --schedule=100,100,100 \
+	--hadoop=/usr/lib/hadoop --local_output=full-svd \
+	--output=$(model_output) \
+        --javamem=2G --replication=1; \
 	cd ..; \
 	echo 'SVD Model Done!';\
 	echo '========================================'

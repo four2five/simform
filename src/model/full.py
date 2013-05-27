@@ -184,7 +184,7 @@ input: Q2 comes attached as a text file, which is then parsed on the fly
 output: Q as <row_id, row>
 """
 class FullTSQRMap3(dumbo.backends.common.MapRedBase):
-    def __init__(self,q2path='q2.txt',ncols=10):
+    def __init__(self,q2path='q2.txt',ncols=10,upath=None):
         # TODO implement this
         self.Q1_data = {}
         self.row_keys = {}
@@ -192,6 +192,12 @@ class FullTSQRMap3(dumbo.backends.common.MapRedBase):
         self.Q_final_out = {}
         self.ncols = ncols
         self.q2path = q2path
+        self.u_data = None
+        if upath is not None:
+          self.u_data = []
+          for row in util.parse_matrix_txt(upath):
+            self.u_data.append(row)
+          self.u_data = numpy.mat(self.u_data)
 
     def parse_q2(self):
         try:
@@ -244,7 +250,9 @@ class FullTSQRMap3(dumbo.backends.common.MapRedBase):
             Q1 = self.Q1_data[mapkey]
             
             Q2 = numpy.mat(self.Q2_data[mapkey])
-            
+            if self.u_data is not None:
+              Q2 = Q2 * self.u_data
+
             Q_out = (Q1*Q2).getA() # compute product and get array
             
             # decode the key output

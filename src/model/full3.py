@@ -19,8 +19,11 @@ gopts = util.GlobalOptions()
 
 def runner(job):
     q2path = gopts.getstrkey('q2path')
+    upath = gopts.getstrkey('upath')
+    if upath == '':
+      upath = None
     ncols = gopts.getintkey('ncols')
-    mapper = full.FullTSQRMap3(q2path,ncols)
+    mapper = full.FullTSQRMap3(q2path,ncols,upath)
     reducer = mrmc.ID_REDUCER
     job.additer(mapper=mapper,reducer=reducer,opts=[('numreducetasks',str(0))])
 
@@ -44,7 +47,14 @@ def starter(prog):
     prog.addopt('file', os.path.join(os.path.dirname(__file__), q2path))
 
     gopts.getstrkey('q2path', q2path)
-    
+   
+    upath = prog.delopt('upath')
+    if upath:
+      prog.addopt('file', os.path.join(os.path.dirname(__file__), upath))
+    else:
+      upath = ''
+    gopts.getstrkey('upath', upath)
+ 
     gopts.save_params()
 
 if __name__ == '__main__':

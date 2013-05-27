@@ -20,7 +20,9 @@ timesteps?=10
 tmpdir?=./
 timestepfile?=tstepstest.txt
 numExodusfiles?=16
-numParas?=16s
+# keep this one so that we parse the ffset names correctly
+numParas?=64 
+
 
 inputfile=$(outdir)input.txt
 exodus2seq_output?=$(outdir)data.seq/
@@ -35,7 +37,7 @@ mseq_input=$(exodus2seq_output)*/*part*.seq
 mseq_output?=$(outdir)data.mseq/
 mseq2_output?=$(outdir)data.mseq2/
 
-model_input?=$(mseq_output)
+model_input?=$(mseq2_output)
 model_output?=$(outdir)model
 
 predict_input=$(exodus2seq_output)*/*part*.seq
@@ -44,7 +46,7 @@ design?=
 points?=
 
 
-predict_SVD_input?=$(model_output)_4/
+predict_SVD_input?=$(model_output)_3/
 predict_SVD_output?=$(outdir)predict/SVD/
 weights?=
 
@@ -149,9 +151,9 @@ model:
 	echo 'SVD Modeling...';\
 	cd model; \
 	python run_full_tsqr.py --input=$(model_input) \
-	--ncols=$(numExodusfiles) --svd=2 --schedule=100,100,100 \
+	--ncols=$(numExodusfiles) --svd=3 --schedule=100,100,100 \
 	--hadoop=/usr/lib/hadoop --local_output=tsqr-tmp \
-	--output=$(model_output); \
+	--output=$(model_output) --replication=1; \
 	cd ..; \
 	echo 'SVD Model Done!';\
 	echo '========================================'

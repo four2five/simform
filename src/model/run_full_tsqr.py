@@ -50,7 +50,9 @@ parser.add_option('-s', '--schedule', dest='sched', default='100,100,100',
                        + ' the three jobs')
 parser.add_option('-H', '--hadoop', dest='hadoop', default='',
                   help='name of hadoop for Dumbo')
-
+parser.add_option('--javamem', default=None, help='memory used for java process')
+parser.add_option('-r','--replication',default=None, dest="rep",
+                  help='HDFS replication factor for output')
 # TODO(arbenson): add option that computes singular vectors but not the Q in
 # QR.  This will be the go-to option for computing the SVD of a
 # tall-and-skinny matrix.
@@ -117,44 +119,68 @@ if options.subset is None:
 else:
     subsetopt = '-subset %s'%(options.subset)  
 
+if options.javamem is None:
+    memopt = ''
+else:
+    memopt = '-jobconf mapred.child.java.opts="-Xmx'+options.javamem+'"'
+
+if options.rep is None:
+    repopt = ''
+else:
+    repopt = '-jobconf dfs.replication='+str(options.rep)
 
 # Now run the MapReduce jobs
 out1 = out + '_1'
 cm.run_dumbo('full1.py', hadoop, ['-mat ' + in1, '-output ' + out1,
                                   '-nummaptasks %d' % sched[0],
                                   subsetopt,
-                                  '-libjar feathers.jar'])
+                                  '-libjar feathers.jar',
+                                  memopt, repopt,
+                                  '-jobconf mapred.map.max.attempts=10',
+                                  '-jobconf mapred.task.timeout=1200000'])
 
 out2 = out + '_2'
 cm.run_dumbo('full2.py', hadoop, ['-mat ' + out1 + '/R_*', '-output ' + out2,
                                   '-svd ' + str(svd_opt),
                                   '-nummaptasks %d' % sched[1],
-                                  '-libjar feathers.jar'])
+                                  '-libjar feathers.jar', 
+                                  memopt,
+                                  '-jobconf mapred.map.max.attempts=10',
+                                  '-jobconf mapred.task.timeout=1200000'])
+
 
 # Q2 file needs parsing before being distributed to phase 3
 Q2_file = out_file('Q2.txt')
 copy_and_parse_locally(out2+'/Q2', Q2_file)
+
+uopt = ''
+if svd_opt == 2 or svd_opt == 3:
+  small_U_file = out_file('U.txt')    
+  copy_and_parse_locally(out2+'/U', small_U_file)
+  copy_and_parse_locally(out2+'/Sigma', out_file('Sigma.txt'))
+  copy_and_parse_locally(out2+'/Vt', out_file('Vt.txt'))
+  
+  if svd_opt==3:
+    upot = '-upath '+small_U_file+'.out'
 
 in3 = out1 + '/Q_*'
 cm.run_dumbo('full3.py', hadoop, ['-mat ' + in3, '-output ' + out + '_3',
                                   '-ncols ' + str(ncols),
                                   '-q2path ' + Q2_file + '.out',
                                   '-nummaptasks %d' % sched[2],
-                                  '-libjar feathers.jar'])
+                                  '-libjar feathers.jar', 
+                                  uopt, memopt, repopt,
+                                  '-jobconf mapred.map.max.attempts=10',
+                                  '-jobconf mapred.task.timeout=1200000'])
 
 if svd_opt == 2:
-  small_U_file = out_file('U.txt')    
-  copy_and_parse_locally(out2+'/U', small_U_file)
-  copy_and_parse_locally(out2+'/Sigma', out_file('Sigma.txt'))
-  copy_and_parse_locally(out2+'/Vt', out_file('Vt.txt'))
-  
 
   # We need an addition TS matrix multiply to get the left singular vectors
   out4 = out + '_4'
 
   cm.run_dumbo ('TSMatMul.py', hadoop, ['-mat ' + out + '_3', '-output ' + out4,
                                         '-mpath ' + small_U_file + '.out',
-                                        '-nummaptasks %d' % sched[2]])
+                                        '-nummaptasks %d' % sched[2], repopt])
 
 try:
   f = open(times_out, 'w')
